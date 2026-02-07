@@ -120,6 +120,8 @@ export function CategoriesPage() {
     onSuccess: () => {
       setRuleForm(emptyRuleForm);
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.rules() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
     },
   });
 

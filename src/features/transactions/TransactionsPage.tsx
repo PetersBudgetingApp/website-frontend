@@ -69,6 +69,8 @@ export function TransactionsPage() {
     onSuccess: () => {
       setRuleForm(null);
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.rules() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
     },
   });
 
