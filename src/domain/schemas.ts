@@ -129,7 +129,7 @@ export const spendingByCategorySchema = z.object({
     z.object({
       categoryId: z.number().nullable().optional(),
       categoryName: z.string(),
-      categoryColor: z.string(),
+      categoryColor: z.string().nullable().optional(),
       amount: z.number(),
       percentage: z.number(),
       transactionCount: z.number(),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { authSessionSchema, transactionSchema } from '@domain/schemas';
+import { authSessionSchema, spendingByCategorySchema, transactionSchema } from '@domain/schemas';
 
 describe('domain schemas', () => {
   it('parses auth session payload', () => {
@@ -26,5 +26,22 @@ describe('domain schemas', () => {
         amount: 'not-a-number',
       }),
     ).toThrow();
+  });
+
+  it('parses spending payload when category color is missing', () => {
+    const parsed = spendingByCategorySchema.parse({
+      totalSpending: 42.5,
+      categories: [
+        {
+          categoryId: 73,
+          categoryName: 'Investments',
+          amount: 42.5,
+          percentage: 100,
+          transactionCount: 1,
+        },
+      ],
+    });
+
+    expect(parsed.categories[0]?.categoryColor).toBeUndefined();
   });
 });
