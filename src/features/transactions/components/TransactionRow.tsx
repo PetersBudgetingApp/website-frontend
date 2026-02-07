@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { CategoryDto, TransactionDto } from '@shared/api/endpoints';
+import type { CategoryDto } from '@shared/api/endpoints/categories';
+import type { TransactionDto } from '@shared/api/endpoints/transactions';
 import { formatCurrency, formatDate } from '@domain/format';
 import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
@@ -8,7 +9,7 @@ import { CategoryPicker } from '@features/transactions/components/CategoryPicker
 interface TransactionRowProps {
   transaction: TransactionDto;
   categories: CategoryDto[];
-  onCategoryChange: (transactionId: number, categoryId?: number) => void;
+  onCategoryChange: (transactionId: number, categoryId: number | null) => void;
   onExcludeToggle: (transactionId: number, excludeFromTotals: boolean) => void;
   onNotesSave: (transactionId: number, notes: string) => void;
   disabled?: boolean;
@@ -36,7 +37,7 @@ export function TransactionRow({
       <td>
         <CategoryPicker
           categories={categories}
-          value={transaction.category?.id ?? undefined}
+          value={transaction.category?.id ?? null}
           disabled={disabled}
           onChange={(categoryId) => onCategoryChange(transaction.id, categoryId)}
         />

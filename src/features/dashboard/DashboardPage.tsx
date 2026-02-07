@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getCurrentMonthKey, formatCurrency } from '@domain/format';
-import { getAccountSummary, getCashFlow, getSpendingByCategory, getCategories } from '@shared/api/endpoints';
+import { getAccountSummary } from '@shared/api/endpoints/accounts';
+import { getCashFlow, getSpendingByCategory } from '@shared/api/endpoints/analytics';
+import { getCategories } from '@shared/api/endpoints/categories';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
 import { Spinner } from '@shared/ui/Spinner';
 import { useAuth } from '@shared/hooks/useAuth';
+import { queryKeys } from '@shared/query/keys';
 import { monthToDateRange } from '@shared/utils/date';
 import { localBudgetStore } from '@features/budgets/budgetStore';
 import { SummaryCards } from '@features/dashboard/components/SummaryCards';
@@ -16,22 +19,22 @@ export function DashboardPage() {
   const { startDate, endDate } = monthToDateRange(month);
 
   const accountSummaryQuery = useQuery({
-    queryKey: ['accounts', 'summary'],
+    queryKey: queryKeys.accounts.summary(),
     queryFn: getAccountSummary,
   });
 
   const cashFlowQuery = useQuery({
-    queryKey: ['analytics', 'cashflow', startDate, endDate],
+    queryKey: queryKeys.analytics.cashFlow(startDate, endDate),
     queryFn: () => getCashFlow(startDate, endDate),
   });
 
   const spendingQuery = useQuery({
-    queryKey: ['analytics', 'spending', startDate, endDate],
+    queryKey: queryKeys.analytics.spending(startDate, endDate),
     queryFn: () => getSpendingByCategory(startDate, endDate),
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ['categories', 'flat'],
+    queryKey: queryKeys.categories.flat(),
     queryFn: () => getCategories(true),
   });
 

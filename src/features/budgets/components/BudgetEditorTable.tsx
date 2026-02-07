@@ -1,6 +1,6 @@
 import type { BudgetTarget } from '@domain/types';
 import { formatCurrency } from '@domain/format';
-import type { CategoryDto } from '@shared/api/endpoints';
+import type { CategoryDto } from '@shared/api/endpoints/categories';
 import { Button } from '@shared/ui/Button';
 
 interface BudgetEditorTableProps {

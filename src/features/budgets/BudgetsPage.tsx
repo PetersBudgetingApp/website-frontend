@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatCurrency, formatMonth, getCurrentMonthKey } from '@domain/format';
 import type { BudgetTarget } from '@domain/types';
-import { getCategories, getSpendingByCategory, getTransactions } from '@shared/api/endpoints';
+import { getSpendingByCategory } from '@shared/api/endpoints/analytics';
+import { getCategories } from '@shared/api/endpoints/categories';
+import { getTransactions } from '@shared/api/endpoints/transactions';
 import { useAuth } from '@shared/hooks/useAuth';
+import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
@@ -31,17 +34,17 @@ export function BudgetsPage() {
   const { startDate, endDate } = monthToDateRange(month);
 
   const categoriesQuery = useQuery({
-    queryKey: ['categories', 'flat'],
+    queryKey: queryKeys.categories.flat(),
     queryFn: () => getCategories(true),
   });
 
   const spendingQuery = useQuery({
-    queryKey: ['analytics', 'spending', startDate, endDate],
+    queryKey: queryKeys.analytics.spending(startDate, endDate),
     queryFn: () => getSpendingByCategory(startDate, endDate),
   });
 
   const uncategorizedQuery = useQuery({
-    queryKey: ['transactions', 'uncategorized', startDate, endDate],
+    queryKey: queryKeys.transactions.uncategorized(startDate, endDate),
     queryFn: () =>
       getTransactions({
         includeTransfers: false,

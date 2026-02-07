@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
 import { formatDate } from '@domain/format';
-import { getAccounts, getCategories, getTransactionCoverage, getTransactions, updateTransaction } from '@shared/api/endpoints';
+import { getAccounts } from '@shared/api/endpoints/accounts';
+import { getCategories } from '@shared/api/endpoints/categories';
+import { getTransactionCoverage, getTransactions, updateTransaction } from '@shared/api/endpoints/transactions';
 import type { TransactionFilters } from '@domain/types';
+import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
@@ -16,32 +19,37 @@ export function TransactionsPage() {
   const [filters, setFilters] = useState<TransactionFilters>(defaultTransactionFilters());
 
   const accountsQuery = useQuery({
-    queryKey: ['accounts'],
+    queryKey: queryKeys.accounts.all(),
     queryFn: getAccounts,
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ['categories', 'flat'],
+    queryKey: queryKeys.categories.flat(),
     queryFn: () => getCategories(true),
   });
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions', filters],
+    queryKey: queryKeys.transactions.list(filters),
     queryFn: () => getTransactions(filters),
   });
 
   const coverageQuery = useQuery({
-    queryKey: ['transactions', 'coverage'],
+    queryKey: queryKeys.transactions.coverage(),
     queryFn: getTransactionCoverage,
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: { categoryId?: number; notes?: string; excludeFromTotals?: boolean } }) =>
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: { categoryId?: number | null; notes?: string; excludeFromTotals?: boolean };
+    }) =>
       updateTransaction(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
     },
   });
 

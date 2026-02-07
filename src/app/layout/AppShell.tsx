@@ -1,15 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { navigationRoutes } from '@app/routes';
 import { logout } from '@shared/auth/authApi';
 import { useAuth } from '@shared/hooks/useAuth';
 import { Button } from '@shared/ui/Button';
-
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/connections', label: 'Connections' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/categories', label: 'Categories' },
-  { to: '/budgets', label: 'Budgets' },
-];
 
 export function AppShell() {
   const auth = useAuth();
@@ -22,8 +15,8 @@ export function AppShell() {
           <p>Personal budgeting</p>
         </div>
         <nav className="nav-links" aria-label="Primary">
-          {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+          {navigationRoutes.map((item) => (
+            <NavLink key={item.path} to={item.path} className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
               {item.label}
             </NavLink>
           ))}
@@ -47,8 +40,8 @@ export function AppShell() {
       </div>
 
       <nav className="mobile-nav" aria-label="Mobile Navigation">
-        {navItems.map((item) => (
-          <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'mobile-nav-link active' : 'mobile-nav-link')}>
+        {navigationRoutes.map((item) => (
+          <NavLink key={item.path} to={item.path} className={({ isActive }) => (isActive ? 'mobile-nav-link active' : 'mobile-nav-link')}>
             {item.label}
           </NavLink>
         ))}

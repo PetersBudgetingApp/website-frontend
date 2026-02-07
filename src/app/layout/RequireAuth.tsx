@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { appRoutes } from '@app/routes';
 import { useAuth } from '@shared/hooks/useAuth';
 
 export function RequireAuth() {
@@ -14,7 +15,7 @@ export function RequireAuth() {
   }
 
   if (auth.status !== 'authenticated') {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to={appRoutes.login} replace state={{ from: location }} />;
   }
 
   return <Outlet />;

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCategory, deleteCategory, getCategories, updateCategory } from '@shared/api/endpoints';
+import { createCategory, deleteCategory, getCategories, updateCategory } from '@shared/api/endpoints/categories';
+import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
@@ -22,12 +23,12 @@ export function CategoriesPage() {
   const [form, setForm] = useState(emptyForm);
 
   const categoriesTreeQuery = useQuery({
-    queryKey: ['categories', 'tree'],
+    queryKey: queryKeys.categories.tree(),
     queryFn: () => getCategories(false),
   });
 
   const categoriesFlatQuery = useQuery({
-    queryKey: ['categories', 'flat'],
+    queryKey: queryKeys.categories.flat(),
     queryFn: () => getCategories(true),
   });
 
@@ -48,14 +49,14 @@ export function CategoriesPage() {
     },
     onSuccess: () => {
       setForm(emptyForm);
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all() });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteCategory,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all() });
       if (form.id) {
         setForm(emptyForm);
       }

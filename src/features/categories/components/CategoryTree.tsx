@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { CategoryDto } from '@shared/api/endpoints';
+import type { CategoryDto } from '@shared/api/endpoints/categories';
 import { Button } from '@shared/ui/Button';
 
 interface CategoryTreeProps {

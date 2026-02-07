@@ -23,4 +23,24 @@ describe('CategoryPicker', () => {
 
     expect(onChange).toHaveBeenCalledWith(2);
   });
+
+  it('emits null when selecting uncategorized', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <CategoryPicker
+        value={1}
+        categories={[
+          { id: 1, name: 'Food', categoryType: 'EXPENSE', system: false },
+          { id: 2, name: 'Utilities', categoryType: 'EXPENSE', system: false },
+        ]}
+        onChange={onChange}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText('Category'), '');
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
 });

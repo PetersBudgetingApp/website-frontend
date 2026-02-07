@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
+import { appRoutes } from '@app/routes';
 import { login, register } from '@shared/auth/authApi';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
@@ -51,7 +52,7 @@ function AuthFormCard({ mode }: AuthFormCardProps) {
       } else {
         await register(values.email, values.password);
       }
-      navigate('/dashboard', { replace: true });
+      navigate(appRoutes.dashboard, { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Authentication failed';
       setError(message);
@@ -103,11 +104,11 @@ function AuthFormCard({ mode }: AuthFormCardProps) {
       <p className="subtle">
         {mode === 'login' ? (
           <>
-            Need an account? <Link to="/register">Create one</Link>
+            Need an account? <Link to={appRoutes.register}>Create one</Link>
           </>
         ) : (
           <>
-            Already have an account? <Link to="/login">Sign in</Link>
+            Already have an account? <Link to={appRoutes.login}>Sign in</Link>
           </>
         )}
       </p>

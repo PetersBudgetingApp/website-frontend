@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "check:no-generated-js": "node ./scripts/check-no-generated-js.mjs",
+    "ci:check": "npm run check:no-generated-js && npm run typecheck && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test"

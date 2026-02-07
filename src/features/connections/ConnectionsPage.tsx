@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deleteConnection, getConnections, getAccountSummary, setupSimpleFinConnection, syncConnection } from '@shared/api/endpoints';
+import { getAccountSummary } from '@shared/api/endpoints/accounts';
+import { deleteConnection, getConnections, setupSimpleFinConnection, syncConnection } from '@shared/api/endpoints/connections';
+import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
 import { Input } from '@shared/ui/Input';
@@ -28,12 +30,12 @@ export function ConnectionsPage() {
   });
 
   const connectionsQuery = useQuery({
-    queryKey: ['connections'],
+    queryKey: queryKeys.connections.all(),
     queryFn: getConnections,
   });
 
   const summaryQuery = useQuery({
-    queryKey: ['accounts', 'summary'],
+    queryKey: queryKeys.accounts.summary(),
     queryFn: getAccountSummary,
   });
 
@@ -41,8 +43,8 @@ export function ConnectionsPage() {
     mutationFn: (values: SetupForm) => setupSimpleFinConnection(values.setupToken),
     onSuccess: () => {
       setupForm.reset();
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
     },
   });
 
@@ -50,20 +52,20 @@ export function ConnectionsPage() {
     mutationFn: syncConnection,
     onSuccess: (result) => {
       setSyncMessage(result.message);
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteConnection,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
     },
   });
 
