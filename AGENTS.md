@@ -110,6 +110,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `src/shared/api/endpoints/transactions.ts`
   - `src/shared/api/endpoints/categories.ts`
   - `src/shared/api/endpoints/analytics.ts`
+  - `src/shared/api/endpoints/budgets.ts`
 - Auth/session:
   - `src/shared/auth/authApi.ts`
   - `src/shared/auth/sessionStore.ts`
@@ -144,6 +145,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - `queryKeys.analytics.spending(startDate, endDate)`
 - `queryKeys.analytics.cashFlow(startDate, endDate)`
 - `queryKeys.analytics.trends(months)`
+- `queryKeys.budgets.all()` -> `['budgets']`
+- `queryKeys.budgets.month(month)` -> `['budgets', month]`
 
 ## Feature Ownership And API/Cache Behavior
 
@@ -163,7 +166,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `analytics.cashFlow(startDate,endDate)`
   - `analytics.spending(startDate,endDate)`
   - `categories.flat`
-- Budget summary combines backend spending with local targets from `localBudgetStore`.
+  - `budgets.month(month)`
+- Budget summary combines backend spending with persisted monthly budget targets from `/budgets`.
 
 ### Connections (`src/features/connections/ConnectionsPage.tsx`)
 - Reads:
@@ -211,12 +215,13 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 
 ### Budgets (`src/features/budgets/BudgetsPage.tsx`)
 - Reads:
+  - month budgets (`/budgets?month=YYYY-MM`)
   - flat categories
   - spending by month
   - filtered transactions for uncategorized warning
 - Writes:
-  - local-only `localBudgetStore` save/delete
-- No backend budget write API currently.
+  - upsert monthly targets (`PUT /budgets/{month}`)
+  - delete category target (`DELETE /budgets/{month}/categories/{categoryId}`)
 
 ## API Layer Contract Rules
 1. Every endpoint function should validate payload with Zod schema when response JSON has shape constraints.
@@ -292,7 +297,6 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 ## Known Functional Gaps
 - No UI route/page for recurring management yet.
 - No UI for transfer pair management yet.
-- Budget targets are local-only; backend budget API not implemented.
 - Clearing a category from a transaction back to uncategorized is not implemented in current backend update semantics.
 
 ## Notes Protocol (Required)

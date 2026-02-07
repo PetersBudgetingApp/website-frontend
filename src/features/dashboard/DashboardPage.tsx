@@ -3,20 +3,19 @@ import { useQuery } from '@tanstack/react-query';
 import { getCurrentMonthKey, formatCurrency } from '@domain/format';
 import { getAccountSummary } from '@shared/api/endpoints/accounts';
 import { getCashFlow, getSpendingByCategory, getTrends } from '@shared/api/endpoints/analytics';
+import { getBudgetMonth } from '@shared/api/endpoints/budgets';
 import { getCategories } from '@shared/api/endpoints/categories';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
 import { Spinner } from '@shared/ui/Spinner';
-import { useAuth } from '@shared/hooks/useAuth';
 import { queryKeys } from '@shared/query/keys';
 import { monthToDateRange } from '@shared/utils/date';
-import { localBudgetStore } from '@features/budgets/budgetStore';
+import { getBudgetPerformance } from '@features/budgets/budgetStore';
 import { IncomeVsSpendingChart } from '@features/dashboard/components/IncomeVsSpendingChart';
 import { NetWorthBreakdownCard } from '@features/dashboard/components/NetWorthBreakdownCard';
 import { SummaryCards } from '@features/dashboard/components/SummaryCards';
 
 export function DashboardPage() {
-  const auth = useAuth();
   const month = getCurrentMonthKey();
   const { startDate, endDate } = monthToDateRange(month);
 
@@ -45,12 +44,15 @@ export function DashboardPage() {
     queryFn: () => getTrends(6),
   });
 
+  const budgetMonthQuery = useQuery({
+    queryKey: queryKeys.budgets.month(month),
+    queryFn: () => getBudgetMonth(month),
+  });
+
   const budgetSummary = useMemo(() => {
-    if (!auth.user || !spendingQuery.data || !categoriesQuery.data) {
+    if (!budgetMonthQuery.data || !spendingQuery.data || !categoriesQuery.data) {
       return { target: 0, actual: 0, overspentCount: 0 };
     }
-
-    const targets = localBudgetStore.getMonthTargets(auth.user.id, month);
     const actualByCategory = new Map<number, number>();
 
     spendingQuery.data.categories.forEach((item) => {
@@ -59,7 +61,15 @@ export function DashboardPage() {
       }
     });
 
-    const performance = localBudgetStore.getPerformance({
+    const categoryNameById = new Map(categoriesQuery.data.map((category) => [category.id, category.name]));
+    const targets = budgetMonthQuery.data.targets.map((target) => ({
+      categoryId: target.categoryId,
+      categoryName: categoryNameById.get(target.categoryId) ?? 'Unknown',
+      targetAmount: target.targetAmount,
+      notes: target.notes ?? '',
+    }));
+
+    const performance = getBudgetPerformance({
       categories: categoriesQuery.data.map((category) => ({ id: category.id, name: category.name })),
       targets,
       actualByCategory,
@@ -70,7 +80,7 @@ export function DashboardPage() {
       actual: performance.reduce((sum, item) => sum + item.actualAmount, 0),
       overspentCount: performance.filter((item) => item.status === 'over').length,
     };
-  }, [auth.user, spendingQuery.data, categoriesQuery.data, month]);
+  }, [budgetMonthQuery.data, spendingQuery.data, categoriesQuery.data]);
 
   if (accountSummaryQuery.isLoading || cashFlowQuery.isLoading || spendingQuery.isLoading) {
     return (

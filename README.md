@@ -57,8 +57,8 @@ Template: `frontend/.env.example`
 - Dashboard analytics snapshot
 - Unified transaction workspace with filters and inline edits
 - Category management
-- Monthly budget targets (local adapter) and budget-vs-actual comparison
+- Monthly budget targets (server-backed) and budget-vs-actual comparison
 
 ## Notes
 
-Budget targets are persisted locally in V1 by `LocalBudgetStoreAdapter`. Planned API contract for server-backed budgets is documented in `docs/backend-budget-contract.md`.
+Budget targets are persisted server-side via `/api/v1/budgets` and are shared across browsers/devices for the same account.

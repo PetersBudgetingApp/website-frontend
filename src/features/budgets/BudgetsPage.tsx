@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency, formatMonth, getCurrentMonthKey } from '@domain/format';
 import type { BudgetTarget } from '@domain/types';
 import { getSpendingByCategory } from '@shared/api/endpoints/analytics';
+import { deleteBudgetTarget, getBudgetMonth, upsertBudgetMonth } from '@shared/api/endpoints/budgets';
 import { getCategories } from '@shared/api/endpoints/categories';
 import { getTransactions } from '@shared/api/endpoints/transactions';
-import { useAuth } from '@shared/hooks/useAuth';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
 import { monthToDateRange } from '@shared/utils/date';
-import { localBudgetStore } from '@features/budgets/budgetStore';
+import { getBudgetPerformance } from '@features/budgets/budgetStore';
 import { BudgetEditorTable } from '@features/budgets/components/BudgetEditorTable';
 
 function listMonths(count = 12) {
@@ -26,7 +26,7 @@ function listMonths(count = 12) {
 }
 
 export function BudgetsPage() {
-  const auth = useAuth();
+  const queryClient = useQueryClient();
   const [month, setMonth] = useState(getCurrentMonthKey());
   const [targetsByCategory, setTargetsByCategory] = useState<Record<number, BudgetTarget>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -52,12 +52,22 @@ export function BudgetsPage() {
         endDate,
         limit: 500,
         offset: 0,
-      }),
+    }),
+  });
+
+  const budgetMonthQuery = useQuery({
+    queryKey: queryKeys.budgets.month(month),
+    queryFn: () => getBudgetMonth(month),
   });
 
   const expenseCategories = useMemo(
     () => (categoriesQuery.data ?? []).filter((item) => item.categoryType === 'EXPENSE'),
     [categoriesQuery.data],
+  );
+
+  const expenseCategoryNameById = useMemo(
+    () => new Map(expenseCategories.map((category) => [category.id, category.name])),
+    [expenseCategories],
   );
 
   const actualByCategory = useMemo(() => {
@@ -75,17 +85,36 @@ export function BudgetsPage() {
     [uncategorizedQuery.data],
   );
 
+  const saveMutation = useMutation({
+    mutationFn: (targets: BudgetTarget[]) => upsertBudgetMonth(month, targets),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(queryKeys.budgets.month(month), saved);
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all() });
+      setSaveMessage(`Saved ${saved.targets.length} targets for ${formatMonth(month)}.`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (categoryId: number) => deleteBudgetTarget(month, categoryId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.month(month) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all() });
+    },
+  });
+
   useEffect(() => {
-    if (!auth.user) {
-      return;
-    }
-    const targets = localBudgetStore.getMonthTargets(auth.user.id, month);
+    const targets = budgetMonthQuery.data?.targets ?? [];
     const map: Record<number, BudgetTarget> = {};
     targets.forEach((target) => {
-      map[target.categoryId] = target;
+      map[target.categoryId] = {
+        categoryId: target.categoryId,
+        categoryName: expenseCategoryNameById.get(target.categoryId) ?? 'Unknown',
+        targetAmount: target.targetAmount,
+        notes: target.notes ?? '',
+      };
     });
     setTargetsByCategory(map);
-  }, [auth.user, month]);
+  }, [budgetMonthQuery.data, expenseCategoryNameById]);
 
   const targetList = useMemo(
     () => Object.values(targetsByCategory).filter((target) => target.targetAmount > 0 || (target.notes ?? '').trim().length > 0),
@@ -93,7 +122,7 @@ export function BudgetsPage() {
   );
 
   const performance = useMemo(() => {
-    return localBudgetStore.getPerformance({
+    return getBudgetPerformance({
       categories: expenseCategories.map((item) => ({ id: item.id, name: item.name })),
       targets: targetList,
       actualByCategory,
@@ -101,26 +130,19 @@ export function BudgetsPage() {
   }, [expenseCategories, targetList, actualByCategory]);
 
   const saveTargets = () => {
-    if (!auth.user) {
-      return;
-    }
-    localBudgetStore.saveMonthTargets(auth.user.id, month, targetList);
-    setSaveMessage(`Saved ${targetList.length} targets for ${formatMonth(month)}.`);
+    saveMutation.mutate(targetList);
   };
 
   const deleteTarget = (categoryId: number) => {
-    if (!auth.user) {
-      return;
-    }
-    localBudgetStore.deleteTarget(auth.user.id, month, categoryId);
     setTargetsByCategory((prev) => {
       const next = { ...prev };
       delete next[categoryId];
       return next;
     });
+    deleteMutation.mutate(categoryId);
   };
 
-  if (!categoriesQuery.data || !spendingQuery.data) {
+  if (!categoriesQuery.data || !spendingQuery.data || !budgetMonthQuery.data) {
     return (
       <section className="page">
         <h2>Budgets</h2>
@@ -146,7 +168,7 @@ export function BudgetsPage() {
             </select>
           </label>
 
-          <Button type="button" onClick={saveTargets}>
+          <Button type="button" onClick={saveTargets} disabled={saveMutation.isPending}>
             Save Monthly Targets
           </Button>
 

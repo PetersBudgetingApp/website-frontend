@@ -159,6 +159,18 @@ export const cashFlowSchema = z.object({
   savingsRate: z.number(),
 });
 
+export const budgetTargetSchema = z.object({
+  categoryId: z.number(),
+  targetAmount: z.number(),
+  notes: z.string().nullable().optional(),
+});
+
+export const budgetMonthSchema = z.object({
+  month: z.string(),
+  currency: z.string(),
+  targets: z.array(budgetTargetSchema),
+});
+
 export const transferPairSchema = z.object({
   fromTransactionId: z.number(),
   fromAccountName: z.string(),
