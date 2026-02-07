@@ -45,6 +45,23 @@ function normalizeError(status: number, payload: unknown): ApiClientError {
   });
 }
 
+function resolveRequestBaseUrl(baseUrl: string): string {
+  if (/^https?:\/\//i.test(baseUrl)) {
+    return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const normalized = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+    const resolved = new URL(normalized, window.location.origin);
+    if (!resolved.pathname.endsWith('/')) {
+      resolved.pathname = `${resolved.pathname}/`;
+    }
+    return resolved.toString();
+  }
+
+  return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+}
+
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly getAccessToken: AccessTokenGetter;
@@ -64,7 +81,7 @@ export class HttpClient {
     const auth = options.auth ?? true;
     const retryOnUnauthorized = options.retryOnUnauthorized ?? true;
 
-    const url = new URL(path, this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`);
+    const url = new URL(path, resolveRequestBaseUrl(this.baseUrl));
 
     if (options.query) {
       Object.entries(options.query).forEach(([key, value]) => {

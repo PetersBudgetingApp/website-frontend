@@ -13,7 +13,9 @@ Use this file as the first stop before searching the codebase. It captures proje
 
 ## Environment
 - API base URL comes from `VITE_API_BASE_URL` in `.env`.
-- Default fallback in code is `http://localhost:8080/api/v1` (`src/shared/api/client.ts`).
+- For frontend-only Vite dev, use `http://localhost:8080/api/v1`.
+- For Docker full-stack, use `/api/v1` (handled through frontend Nginx proxy).
+- Default fallback in code remains `http://localhost:8080/api/v1` (`src/shared/api/client.ts`).
 
 ## Architecture Map
 - App shell and routing:

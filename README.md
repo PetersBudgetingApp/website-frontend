@@ -1,6 +1,6 @@
 # Budgeting App Frontend
 
-Frontend for the budgeting application backed by the Spring API in `../backend/budget`.
+Frontend for the budgeting application backed by the Spring API in `../backend`.
 
 ## Stack
 
@@ -11,7 +11,21 @@ Frontend for the budgeting application backed by the Spring API in `../backend/b
 - Vitest + Testing Library
 - Playwright
 
-## Run
+## Run (Docker full stack, recommended)
+
+From repository root:
+
+```bash
+docker compose up --build -d
+```
+
+Then open [http://localhost:3000](http://localhost:3000).
+
+In this mode, the browser uses `/api/v1` through frontend Nginx proxy.
+
+## Run (Frontend only, Vite dev server)
+
+From `frontend/`:
 
 ```bash
 npm install
@@ -23,6 +37,10 @@ Set API URL in `.env`:
 ```bash
 VITE_API_BASE_URL=http://localhost:8080/api/v1
 ```
+
+If backend is run with Docker, make sure backend allows `http://localhost:5173` in CORS.
+
+Template: `frontend/.env.example`
 
 ## Structure
 
