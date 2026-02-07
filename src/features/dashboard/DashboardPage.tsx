@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getCurrentMonthKey, formatCurrency } from '@domain/format';
 import { getAccountSummary } from '@shared/api/endpoints/accounts';
-import { getCashFlow, getSpendingByCategory } from '@shared/api/endpoints/analytics';
+import { getCashFlow, getSpendingByCategory, getTrends } from '@shared/api/endpoints/analytics';
 import { getCategories } from '@shared/api/endpoints/categories';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
@@ -11,6 +11,7 @@ import { useAuth } from '@shared/hooks/useAuth';
 import { queryKeys } from '@shared/query/keys';
 import { monthToDateRange } from '@shared/utils/date';
 import { localBudgetStore } from '@features/budgets/budgetStore';
+import { IncomeVsSpendingChart } from '@features/dashboard/components/IncomeVsSpendingChart';
 import { SummaryCards } from '@features/dashboard/components/SummaryCards';
 
 export function DashboardPage() {
@@ -36,6 +37,11 @@ export function DashboardPage() {
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories.flat(),
     queryFn: () => getCategories(true),
+  });
+
+  const trendsQuery = useQuery({
+    queryKey: queryKeys.analytics.trends(6),
+    queryFn: () => getTrends(6),
   });
 
   const budgetSummary = useMemo(() => {
@@ -86,6 +92,7 @@ export function DashboardPage() {
   return (
     <section className="page">
       <h2>Dashboard</h2>
+      <IncomeVsSpendingChart trends={trendsQuery.data?.trends ?? []} isLoading={trendsQuery.isLoading} isError={trendsQuery.isError} />
       <SummaryCards
         netWorth={accountSummaryQuery.data.netWorth}
         income={cashFlowQuery.data.totalIncome}

@@ -317,6 +317,112 @@ textarea {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.chart-toggle {
+  display: inline-flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.chart-toggle-btn {
+  padding: 0.46rem 0.75rem;
+  font-size: 0.84rem;
+}
+
+.chart-content {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.chart-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+}
+
+.trend-chart {
+  width: 100%;
+  height: auto;
+  min-height: 235px;
+  display: block;
+}
+
+.trend-grid-line {
+  stroke: #dfebf7;
+  stroke-width: 1;
+}
+
+.trend-axis-line {
+  stroke: #afc3db;
+  stroke-width: 1.1;
+}
+
+.trend-axis-label {
+  fill: #5d6b7f;
+  font-size: 12px;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+}
+
+.trend-bar-income,
+.trend-line-income,
+.trend-point-income,
+.trend-income {
+  color: #1676dd;
+}
+
+.trend-bar-expense,
+.trend-line-expense,
+.trend-point-expense,
+.trend-expense {
+  color: #dc623d;
+}
+
+.trend-bar-income {
+  fill: currentColor;
+}
+
+.trend-bar-expense {
+  fill: currentColor;
+}
+
+.trend-line {
+  fill: none;
+  stroke-width: 3;
+  stroke: currentColor;
+}
+
+.trend-point {
+  fill: currentColor;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.trend-legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.trend-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-soft);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.trend-legend-swatch {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 0.25rem;
+  display: inline-block;
+  background: currentColor;
+}
+
 .mobile-nav {
   display: none;
 }
@@ -324,6 +430,10 @@ textarea {
 @media (max-width: 1080px) {
   .grid-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trend-axis-label {
+    font-size: 11px;
   }
 }
 
@@ -375,6 +485,22 @@ textarea {
 @media (max-width: 560px) {
   .grid-cards {
     grid-template-columns: 1fr;
+  }
+
+  .card-header {
+    align-items: flex-start;
+  }
+
+  .chart-toggle {
+    width: 100%;
+  }
+
+  .chart-toggle-btn {
+    flex: 1 1 0;
+  }
+
+  .trend-chart {
+    min-height: 210px;
   }
 }
 
