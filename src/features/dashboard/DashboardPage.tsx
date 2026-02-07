@@ -12,6 +12,7 @@ import { queryKeys } from '@shared/query/keys';
 import { monthToDateRange } from '@shared/utils/date';
 import { localBudgetStore } from '@features/budgets/budgetStore';
 import { IncomeVsSpendingChart } from '@features/dashboard/components/IncomeVsSpendingChart';
+import { NetWorthBreakdownCard } from '@features/dashboard/components/NetWorthBreakdownCard';
 import { SummaryCards } from '@features/dashboard/components/SummaryCards';
 
 export function DashboardPage() {
@@ -93,8 +94,8 @@ export function DashboardPage() {
     <section className="page">
       <h2>Dashboard</h2>
       <IncomeVsSpendingChart trends={trendsQuery.data?.trends ?? []} isLoading={trendsQuery.isLoading} isError={trendsQuery.isError} />
+      <NetWorthBreakdownCard summary={accountSummaryQuery.data} />
       <SummaryCards
-        netWorth={accountSummaryQuery.data.netWorth}
         income={cashFlowQuery.data.totalIncome}
         expenses={cashFlowQuery.data.totalExpenses}
         savingsRate={cashFlowQuery.data.savingsRate}

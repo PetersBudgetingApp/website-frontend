@@ -4,9 +4,8 @@ import { SummaryCards } from '@features/dashboard/components/SummaryCards';
 
 describe('SummaryCards', () => {
   it('renders all financial summary cards', () => {
-    render(<SummaryCards netWorth={1000} income={5000} expenses={2200} savingsRate={56} />);
+    render(<SummaryCards income={5000} expenses={2200} savingsRate={56} />);
 
-    expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Income')).toBeInTheDocument();
     expect(screen.getByText('Expenses')).toBeInTheDocument();
     expect(screen.getByText('Savings Rate')).toBeInTheDocument();
