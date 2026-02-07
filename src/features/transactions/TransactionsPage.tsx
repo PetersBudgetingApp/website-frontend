@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
-import { getAccounts, getCategories, getTransactions, updateTransaction } from '@shared/api/endpoints';
+import { formatDate } from '@domain/format';
+import { getAccounts, getCategories, getTransactionCoverage, getTransactions, updateTransaction } from '@shared/api/endpoints';
 import type { TransactionFilters } from '@domain/types';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
@@ -27,6 +28,11 @@ export function TransactionsPage() {
   const transactionsQuery = useQuery({
     queryKey: ['transactions', filters],
     queryFn: () => getTransactions(filters),
+  });
+
+  const coverageQuery = useQuery({
+    queryKey: ['transactions', 'coverage'],
+    queryFn: getTransactionCoverage,
   });
 
   const updateMutation = useMutation({
@@ -110,6 +116,27 @@ export function TransactionsPage() {
             </label>
           </label>
         </div>
+      </Card>
+
+      <Card title="Imported Transaction Coverage">
+        {coverageQuery.data ? (
+          <div className="grid-cards">
+            <div>
+              <p className="subtle">Total Imported</p>
+              <p className="number">{coverageQuery.data.totalTransactions}</p>
+            </div>
+            <div>
+              <p className="subtle">Oldest Imported</p>
+              <p className="number">{formatDate(coverageQuery.data.oldestPostedAt ?? null)}</p>
+            </div>
+            <div>
+              <p className="subtle">Newest Imported</p>
+              <p className="number">{formatDate(coverageQuery.data.newestPostedAt ?? null)}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="subtle">Loading coverage...</p>
+        )}
       </Card>
 
       <Card title="Unified Transactions">

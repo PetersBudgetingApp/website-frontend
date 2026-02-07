@@ -105,6 +105,12 @@ export const transactionSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+export const transactionCoverageSchema = z.object({
+  totalTransactions: z.number(),
+  oldestPostedAt: z.string().nullable().optional(),
+  newestPostedAt: z.string().nullable().optional(),
+});
+
 export const spendingByCategorySchema = z.object({
   totalSpending: z.number(),
   categories: z.array(

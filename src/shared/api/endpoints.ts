@@ -6,6 +6,7 @@ import {
   categorySchema,
   connectionSchema,
   spendingByCategorySchema,
+  transactionCoverageSchema,
   syncResultSchema,
   transactionSchema,
   transferPairSchema,
@@ -25,6 +26,7 @@ export type AccountSummaryDto = z.infer<typeof accountSummarySchema>;
 export type CategoryDto = z.infer<typeof categorySchema>;
 export type ConnectionDto = z.infer<typeof connectionSchema>;
 export type TransactionDto = z.infer<typeof transactionSchema>;
+export type TransactionCoverageDto = z.infer<typeof transactionCoverageSchema>;
 export type TransferPairDto = z.infer<typeof transferPairSchema>;
 export type SpendingDto = z.infer<typeof spendingByCategorySchema>;
 export type TrendDto = z.infer<typeof trendSchema>;
@@ -82,6 +84,13 @@ export async function getTransactions(filters: TransactionFilters) {
       offset: filters.offset,
     },
     schema: transactionsSchema,
+  });
+}
+
+export async function getTransactionCoverage() {
+  return apiClient.request('transactions/coverage', {
+    method: 'GET',
+    schema: transactionCoverageSchema,
   });
 }
 
