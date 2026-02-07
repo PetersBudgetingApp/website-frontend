@@ -297,7 +297,6 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 ## Known Functional Gaps
 - No UI route/page for recurring management yet.
 - No UI for transfer pair management yet.
-- Clearing a category from a transaction back to uncategorized is not implemented in current backend update semantics.
 
 ## Notes Protocol (Required)
 When the user supplies a correction that resolves a real issue:
