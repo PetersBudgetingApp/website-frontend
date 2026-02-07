@@ -139,6 +139,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - `queryKeys.categories.all()` -> `['categories']`
 - `queryKeys.categories.tree()` -> `['categories', 'tree']`
 - `queryKeys.categories.flat()` -> `['categories', 'flat']`
+- `queryKeys.categories.rules()` -> `['categories', 'rules']`
 - `queryKeys.analytics.all()` -> `['analytics']`
 - `queryKeys.analytics.spending(startDate, endDate)`
 - `queryKeys.analytics.cashFlow(startDate, endDate)`
@@ -192,12 +193,17 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Reads:
   - category tree
   - flat categories
+  - categorization rules
 - Mutations:
   - create category
   - update category
   - delete category
+  - create categorization rule
+  - update categorization rule
+  - delete categorization rule
 - Invalidation:
   - `categories.all`
+  - `categories.rules`
 
 ### Budgets (`src/features/budgets/BudgetsPage.tsx`)
 - Reads:

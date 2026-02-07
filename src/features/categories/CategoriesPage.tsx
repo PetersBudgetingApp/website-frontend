@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCategory, deleteCategory, getCategories, updateCategory } from '@shared/api/endpoints/categories';
+import {
+  createCategorizationRule,
+  createCategory,
+  deleteCategorizationRule,
+  deleteCategory,
+  getCategorizationRules,
+  getCategories,
+  updateCategorizationRule,
+  updateCategory,
+} from '@shared/api/endpoints/categories';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
@@ -9,7 +18,7 @@ import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { CategoryTree } from '@features/categories/components/CategoryTree';
 
-const emptyForm = {
+const emptyCategoryForm = {
   id: null as number | null,
   name: '',
   parentId: '',
@@ -18,9 +27,21 @@ const emptyForm = {
   categoryType: 'EXPENSE' as 'INCOME' | 'EXPENSE' | 'TRANSFER',
 };
 
+const emptyRuleForm = {
+  id: null as number | null,
+  name: '',
+  pattern: '',
+  patternType: 'CONTAINS' as 'CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'EXACT' | 'REGEX',
+  matchField: 'DESCRIPTION' as 'DESCRIPTION' | 'PAYEE' | 'MEMO',
+  categoryId: '',
+  priority: '0',
+  active: true,
+};
+
 export function CategoriesPage() {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState(emptyForm);
+  const [categoryForm, setCategoryForm] = useState(emptyCategoryForm);
+  const [ruleForm, setRuleForm] = useState(emptyRuleForm);
 
   const categoriesTreeQuery = useQuery({
     queryKey: queryKeys.categories.tree(),
@@ -32,49 +53,90 @@ export function CategoriesPage() {
     queryFn: () => getCategories(true),
   });
 
-  const saveMutation = useMutation({
+  const rulesQuery = useQuery({
+    queryKey: queryKeys.categories.rules(),
+    queryFn: getCategorizationRules,
+  });
+
+  const saveCategoryMutation = useMutation({
     mutationFn: async () => {
       const payload = {
-        name: form.name.trim(),
-        parentId: form.parentId ? Number(form.parentId) : null,
-        icon: form.icon || undefined,
-        color: form.color || undefined,
-        categoryType: form.categoryType,
+        name: categoryForm.name.trim(),
+        parentId: categoryForm.parentId ? Number(categoryForm.parentId) : null,
+        icon: categoryForm.icon || undefined,
+        color: categoryForm.color || undefined,
+        categoryType: categoryForm.categoryType,
       };
 
-      if (form.id) {
-        return updateCategory(form.id, payload);
+      if (categoryForm.id) {
+        return updateCategory(categoryForm.id, payload);
       }
       return createCategory(payload);
     },
     onSuccess: () => {
-      setForm(emptyForm);
+      setCategoryForm(emptyCategoryForm);
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all() });
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteCategoryMutation = useMutation({
     mutationFn: deleteCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all() });
-      if (form.id) {
-        setForm(emptyForm);
+      if (categoryForm.id) {
+        setCategoryForm(emptyCategoryForm);
       }
     },
   });
 
-  const editableCategories = useMemo(
-    () => (categoriesFlatQuery.data ?? []).filter((item) => !item.system),
+  const saveRuleMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        name: ruleForm.name.trim(),
+        pattern: ruleForm.pattern.trim(),
+        patternType: ruleForm.patternType,
+        matchField: ruleForm.matchField,
+        categoryId: Number(ruleForm.categoryId),
+        priority: Number(ruleForm.priority) || 0,
+        active: ruleForm.active,
+      };
+
+      if (ruleForm.id) {
+        return updateCategorizationRule(ruleForm.id, payload);
+      }
+      return createCategorizationRule(payload);
+    },
+    onSuccess: () => {
+      setRuleForm(emptyRuleForm);
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.rules() });
+    },
+  });
+
+  const deleteRuleMutation = useMutation({
+    mutationFn: deleteCategorizationRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.rules() });
+      if (ruleForm.id) {
+        setRuleForm(emptyRuleForm);
+      }
+    },
+  });
+
+  const allCategories = categoriesFlatQuery.data ?? [];
+
+  const categoryNameById = useMemo(
+    () =>
+      new Map<number, string>((categoriesFlatQuery.data ?? []).map((category) => [category.id, category.name])),
     [categoriesFlatQuery.data],
   );
 
-  const loadForEdit = (id: number) => {
-    const target = editableCategories.find((item) => item.id === id);
+  const loadCategoryForEdit = (id: number) => {
+    const target = allCategories.find((item) => item.id === id);
     if (!target) {
       return;
     }
 
-    setForm({
+    setCategoryForm({
       id: target.id,
       name: target.name,
       parentId: target.parentId ? String(target.parentId) : '',
@@ -84,25 +146,46 @@ export function CategoriesPage() {
     });
   };
 
+  const loadRuleForEdit = (id: number) => {
+    const target = (rulesQuery.data ?? []).find((item) => item.id === id);
+    if (!target) {
+      return;
+    }
+
+    setRuleForm({
+      id: target.id,
+      name: target.name,
+      pattern: target.pattern,
+      patternType: target.patternType,
+      matchField: target.matchField,
+      categoryId: String(target.categoryId),
+      priority: String(target.priority),
+      active: target.active,
+    });
+  };
+
   return (
     <section className="page">
       <h2>Categories</h2>
 
-      <Card title={form.id ? 'Edit Category' : 'Create Category'}>
+      <Card title={categoryForm.id ? 'Edit Category' : 'Create Category'}>
         <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
           <Input
             id="category-name"
             label="Name"
-            value={form.name}
-            onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+            value={categoryForm.name}
+            onChange={(event) => setCategoryForm((prev) => ({ ...prev, name: event.target.value }))}
           />
 
           <Select
             id="category-type"
             label="Type"
-            value={form.categoryType}
+            value={categoryForm.categoryType}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, categoryType: event.target.value as 'INCOME' | 'EXPENSE' | 'TRANSFER' }))
+              setCategoryForm((prev) => ({
+                ...prev,
+                categoryType: event.target.value as 'INCOME' | 'EXPENSE' | 'TRANSFER',
+              }))
             }
           >
             <option value="EXPENSE">Expense</option>
@@ -113,38 +196,44 @@ export function CategoriesPage() {
           <Select
             id="category-parent"
             label="Parent"
-            value={form.parentId}
-            onChange={(event) => setForm((prev) => ({ ...prev, parentId: event.target.value }))}
+            value={categoryForm.parentId}
+            onChange={(event) => setCategoryForm((prev) => ({ ...prev, parentId: event.target.value }))}
           >
             <option value="">No parent</option>
-            {(categoriesFlatQuery.data ?? []).map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
+            {allCategories
+              .filter((category) => category.id !== categoryForm.id)
+              .map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
           </Select>
 
           <Input
             id="category-icon"
             label="Icon token"
-            value={form.icon}
-            onChange={(event) => setForm((prev) => ({ ...prev, icon: event.target.value }))}
+            value={categoryForm.icon}
+            onChange={(event) => setCategoryForm((prev) => ({ ...prev, icon: event.target.value }))}
           />
 
           <Input
             id="category-color"
             label="Color"
-            value={form.color}
-            onChange={(event) => setForm((prev) => ({ ...prev, color: event.target.value }))}
+            value={categoryForm.color}
+            onChange={(event) => setCategoryForm((prev) => ({ ...prev, color: event.target.value }))}
           />
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-          <Button type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
-            {form.id ? 'Update category' : 'Create category'}
+          <Button
+            type="button"
+            onClick={() => saveCategoryMutation.mutate()}
+            disabled={saveCategoryMutation.isPending || !categoryForm.name.trim()}
+          >
+            {categoryForm.id ? 'Update category' : 'Create category'}
           </Button>
-          {form.id && (
-            <Button type="button" variant="secondary" onClick={() => setForm(emptyForm)}>
+          {categoryForm.id && (
+            <Button type="button" variant="secondary" onClick={() => setCategoryForm(emptyCategoryForm)}>
               Cancel
             </Button>
           )}
@@ -155,12 +244,157 @@ export function CategoriesPage() {
         {categoriesTreeQuery.data && categoriesTreeQuery.data.length > 0 ? (
           <CategoryTree
             categories={categoriesTreeQuery.data}
-            onEdit={loadForEdit}
-            onDelete={(id) => deleteMutation.mutate(id)}
+            onEdit={loadCategoryForEdit}
+            onDelete={(id) => deleteCategoryMutation.mutate(id)}
           />
         ) : (
-          <EmptyState title="No categories" description="Create your first custom category to begin." />
+          <EmptyState title="No categories" description="Create your first category to begin." />
         )}
+      </Card>
+
+      <Card title={ruleForm.id ? 'Edit Auto-Categorization Rule' : 'Auto-Categorization Rules'}>
+        <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          <Input
+            id="rule-name"
+            label="Rule name"
+            value={ruleForm.name}
+            onChange={(event) => setRuleForm((prev) => ({ ...prev, name: event.target.value }))}
+          />
+
+          <Input
+            id="rule-pattern"
+            label="Match text"
+            value={ruleForm.pattern}
+            onChange={(event) => setRuleForm((prev) => ({ ...prev, pattern: event.target.value }))}
+            placeholder="Tim Hortons"
+          />
+
+          <Select
+            id="rule-category"
+            label="Assign category"
+            value={ruleForm.categoryId}
+            onChange={(event) => setRuleForm((prev) => ({ ...prev, categoryId: event.target.value }))}
+          >
+            <option value="">Select category</option>
+            {allCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            id="rule-match-field"
+            label="Match field"
+            value={ruleForm.matchField}
+            onChange={(event) =>
+              setRuleForm((prev) => ({ ...prev, matchField: event.target.value as 'DESCRIPTION' | 'PAYEE' | 'MEMO' }))
+            }
+          >
+            <option value="DESCRIPTION">Description</option>
+            <option value="PAYEE">Payee</option>
+            <option value="MEMO">Memo</option>
+          </Select>
+
+          <Select
+            id="rule-pattern-type"
+            label="Pattern type"
+            value={ruleForm.patternType}
+            onChange={(event) =>
+              setRuleForm((prev) => ({
+                ...prev,
+                patternType: event.target.value as 'CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'EXACT' | 'REGEX',
+              }))
+            }
+          >
+            <option value="CONTAINS">Contains</option>
+            <option value="STARTS_WITH">Starts with</option>
+            <option value="ENDS_WITH">Ends with</option>
+            <option value="EXACT">Exact</option>
+            <option value="REGEX">Regex</option>
+          </Select>
+
+          <Input
+            id="rule-priority"
+            label="Priority"
+            type="number"
+            value={ruleForm.priority}
+            onChange={(event) => setRuleForm((prev) => ({ ...prev, priority: event.target.value }))}
+          />
+
+          <Select
+            id="rule-active"
+            label="Status"
+            value={ruleForm.active ? 'active' : 'inactive'}
+            onChange={(event) => setRuleForm((prev) => ({ ...prev, active: event.target.value === 'active' }))}
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </Select>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+          <Button
+            type="button"
+            onClick={() => saveRuleMutation.mutate()}
+            disabled={
+              saveRuleMutation.isPending ||
+              !ruleForm.name.trim() ||
+              !ruleForm.pattern.trim() ||
+              !ruleForm.categoryId
+            }
+          >
+            {ruleForm.id ? 'Update rule' : 'Create rule'}
+          </Button>
+          {ruleForm.id && (
+            <Button type="button" variant="secondary" onClick={() => setRuleForm(emptyRuleForm)}>
+              Cancel
+            </Button>
+          )}
+        </div>
+
+        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+          {(rulesQuery.data ?? []).length > 0 ? (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {(rulesQuery.data ?? []).map((rule) => (
+                <div
+                  key={rule.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                    padding: '0.65rem 0.75rem',
+                  }}
+                >
+                  <div>
+                    <strong>{rule.name}</strong>
+                    <div className="subtle" style={{ marginTop: '0.2rem' }}>
+                      {rule.matchField} {rule.patternType} &quot;{rule.pattern}&quot; →{' '}
+                      {categoryNameById.get(rule.categoryId) ?? `Category #${rule.categoryId}`}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <Button type="button" variant="ghost" onClick={() => loadRuleForEdit(rule.id)}>
+                      Edit
+                    </Button>
+                    <Button type="button" variant="danger" onClick={() => deleteRuleMutation.mutate(rule.id)}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No auto-categorization rules"
+              description="Add a match rule like 'Tim Hortons' and assign a category for incoming transactions."
+            />
+          )}
+        </div>
       </Card>
     </section>
   );

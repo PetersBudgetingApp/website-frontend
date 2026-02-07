@@ -18,6 +18,7 @@ export const queryKeys = {
     all: () => ['categories'] as const,
     tree: () => ['categories', 'tree'] as const,
     flat: () => ['categories', 'flat'] as const,
+    rules: () => ['categories', 'rules'] as const,
   },
   analytics: {
     all: () => ['analytics'] as const,

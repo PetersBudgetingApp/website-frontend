@@ -65,6 +65,18 @@ export const categorySchema: z.ZodType<CategoryNode> = z.lazy(() =>
   }),
 );
 
+export const categorizationRuleSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  pattern: z.string(),
+  patternType: z.enum(['CONTAINS', 'STARTS_WITH', 'ENDS_WITH', 'EXACT', 'REGEX']),
+  matchField: z.enum(['DESCRIPTION', 'PAYEE', 'MEMO']),
+  categoryId: z.number(),
+  priority: z.number(),
+  active: z.boolean(),
+  system: z.boolean(),
+});
+
 export const connectionSchema = z.object({
   id: z.number(),
   institutionName: z.string().nullable().optional(),

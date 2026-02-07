@@ -28,16 +28,14 @@ function renderNodes(
           )}
         </div>
 
-        {!category.system && (
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
-            <Button type="button" variant="ghost" onClick={() => handlers.onEdit(category.id)}>
-              Edit
-            </Button>
-            <Button type="button" variant="danger" onClick={() => handlers.onDelete(category.id)}>
-              Delete
-            </Button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '0.4rem' }}>
+          <Button type="button" variant="ghost" onClick={() => handlers.onEdit(category.id)}>
+            Edit
+          </Button>
+          <Button type="button" variant="danger" onClick={() => handlers.onDelete(category.id)}>
+            {category.system ? 'Remove' : 'Delete'}
+          </Button>
+        </div>
       </div>
 
       {category.children && category.children.length > 0 && renderNodes(category.children, handlers, depth + 1)}
