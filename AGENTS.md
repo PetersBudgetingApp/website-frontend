@@ -186,6 +186,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - transaction coverage summary
 - Mutation:
   - update transaction (category/notes/excludeFromTotals)
+  - create categorization rule from selected transaction defaults
 - Invalidation on update:
   - `transactions.all`, `analytics.all`
 
@@ -194,6 +195,9 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - category tree
   - flat categories
   - categorization rules
+  - tracked transactions for selected categorization rule (`/categorization-rules/{id}/transactions`)
+- UX behavior:
+  - clicking a category name opens an inline modal-like details panel directly under that category row in the tree (no separate bottom-of-page explorer section)
 - Mutations:
   - create category
   - update category
@@ -227,6 +231,12 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `tests/e2e/core-flow.spec.ts`
   - `tests/e2e/signup-regression.spec.ts`
 - `playwright.config.ts` starts Vite dev server at `127.0.0.1:5173` for E2E.
+
+### Mandatory MCP Validation For UI Changes
+- For any new or changed frontend feature, run a Playwright MCP manual smoke flow on the actual UI and include explicit pass/fail status in the delivery message.
+- If the feature depends on backend/API/auth/database behavior, run MCP against Docker full stack (`docker compose up --build -d` from workspace root) instead of frontend-only dev mode.
+- If authentication is required and no credentials are already present in the conversation, request username/password from the user before running MCP.
+- Keep automated tests (`typecheck`, unit/integration, build) in addition to MCP; MCP does not replace them.
 
 ## JS Duplicate Prevention Policy
 - Guard script: `scripts/check-no-generated-js.mjs`.

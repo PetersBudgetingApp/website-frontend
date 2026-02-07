@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { categorizationRuleSchema, categorySchema } from '@domain/schemas';
+import { categorizationRuleSchema, categorySchema, transactionSchema } from '@domain/schemas';
 import { apiClient } from '@shared/api/client';
 
 const categoriesSchema = z.array(categorySchema);
 const categorizationRulesSchema = z.array(categorizationRuleSchema);
+const categorizationRuleTransactionsSchema = z.array(transactionSchema);
 
 export type CategoryDto = z.infer<typeof categorySchema>;
 export type CategorizationRuleDto = z.infer<typeof categorizationRuleSchema>;
@@ -80,5 +81,12 @@ export async function updateCategorizationRule(id: number, input: Categorization
 export async function deleteCategorizationRule(id: number) {
   return apiClient.request<void>(`categorization-rules/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export async function getCategorizationRuleTransactions(ruleId: number, limit = 100, offset = 0) {
+  return apiClient.request(`categorization-rules/${ruleId}/transactions`, {
+    query: { limit, offset },
+    schema: categorizationRuleTransactionsSchema,
   });
 }

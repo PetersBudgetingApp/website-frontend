@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { formatCurrency, formatDate } from '@domain/format';
 import {
   createCategorizationRule,
   createCategory,
   deleteCategorizationRule,
   deleteCategory,
   getCategorizationRules,
+  getCategorizationRuleTransactions,
   getCategories,
   updateCategorizationRule,
   updateCategory,
+  type CategoryDto,
 } from '@shared/api/endpoints/categories';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
@@ -42,6 +45,8 @@ export function CategoriesPage() {
   const queryClient = useQueryClient();
   const [categoryForm, setCategoryForm] = useState(emptyCategoryForm);
   const [ruleForm, setRuleForm] = useState(emptyRuleForm);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [expandedRuleId, setExpandedRuleId] = useState<number | null>(null);
 
   const categoriesTreeQuery = useQuery({
     queryKey: queryKeys.categories.tree(),
@@ -56,6 +61,12 @@ export function CategoriesPage() {
   const rulesQuery = useQuery({
     queryKey: queryKeys.categories.rules(),
     queryFn: getCategorizationRules,
+  });
+
+  const ruleTransactionsQuery = useQuery({
+    queryKey: queryKeys.categories.ruleTransactions(expandedRuleId ?? 0),
+    queryFn: () => getCategorizationRuleTransactions(expandedRuleId ?? 0),
+    enabled: expandedRuleId !== null,
   });
 
   const saveCategoryMutation = useMutation({
@@ -146,6 +157,11 @@ export function CategoriesPage() {
     });
   };
 
+  const inspectCategory = (id: number) => {
+    setSelectedCategoryId(id);
+    setExpandedRuleId(null);
+  };
+
   const loadRuleForEdit = (id: number) => {
     const target = (rulesQuery.data ?? []).find((item) => item.id === id);
     if (!target) {
@@ -162,6 +178,103 @@ export function CategoriesPage() {
       priority: String(target.priority),
       active: target.active,
     });
+  };
+
+  const renderCategoryRuleDetails = (category: CategoryDto) => {
+    const categoryRules = (rulesQuery.data ?? []).filter((rule) => rule.categoryId === category.id);
+
+    return (
+      <div style={{ display: 'grid', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+          <strong>{category.name} Rules</strong>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setSelectedCategoryId(null);
+              setExpandedRuleId(null);
+            }}
+          >
+            Close
+          </Button>
+        </div>
+
+        {categoryRules.length > 0 ? (
+          <>
+            <div className="subtle">
+              {categoryRules.length} associated rule{categoryRules.length === 1 ? '' : 's'}.
+            </div>
+
+            {categoryRules.map((rule) => (
+              <div
+                key={rule.id}
+                style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.5rem',
+                  background: 'var(--surface)',
+                  padding: '0.65rem 0.75rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                  <div>
+                    <strong>{rule.name}</strong>
+                    <div className="subtle" style={{ marginTop: '0.2rem' }}>
+                      {rule.matchField} {rule.patternType} &quot;{rule.pattern}&quot;
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setExpandedRuleId((prev) => (prev === rule.id ? null : rule.id))}
+                  >
+                    {expandedRuleId === rule.id ? 'Hide transactions' : 'See transactions'}
+                  </Button>
+                </div>
+
+                {expandedRuleId === rule.id && (
+                  <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                    {ruleTransactionsQuery.isPending ? (
+                      <p className="subtle">Loading transactions...</p>
+                    ) : ruleTransactionsQuery.isError ? (
+                      <p className="subtle">Could not load transactions for this rule.</p>
+                    ) : (ruleTransactionsQuery.data ?? []).length > 0 ? (
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Account</th>
+                            <th>Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(ruleTransactionsQuery.data ?? []).map((transaction) => (
+                            <tr key={transaction.id}>
+                              <td>{formatDate(transaction.postedAt)}</td>
+                              <td>{transaction.description ?? transaction.payee ?? transaction.memo ?? 'Unknown'}</td>
+                              <td>{transaction.accountName ?? 'Unknown account'}</td>
+                              <td className="number">{formatCurrency(transaction.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="subtle">No tracked transactions for this rule yet.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        ) : (
+          <EmptyState
+            title="No rules for this category"
+            description="Create or edit a rule and assign it to this category to see it here."
+          />
+        )}
+      </div>
+    );
   };
 
   return (
@@ -246,6 +359,9 @@ export function CategoriesPage() {
             categories={categoriesTreeQuery.data}
             onEdit={loadCategoryForEdit}
             onDelete={(id) => deleteCategoryMutation.mutate(id)}
+            onSelect={inspectCategory}
+            selectedId={selectedCategoryId}
+            renderDetails={renderCategoryRuleDetails}
           />
         ) : (
           <EmptyState title="No categories" description="Create your first category to begin." />

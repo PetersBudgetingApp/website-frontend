@@ -29,6 +29,7 @@ describe('TransactionRow', () => {
             onCategoryChange={() => undefined}
             onExcludeToggle={() => undefined}
             onNotesSave={onNotesSave}
+            onAddRule={() => undefined}
           />
         </tbody>
       </table>,

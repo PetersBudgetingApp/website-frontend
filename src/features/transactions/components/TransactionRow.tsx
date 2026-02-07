@@ -12,6 +12,7 @@ interface TransactionRowProps {
   onCategoryChange: (transactionId: number, categoryId: number | null) => void;
   onExcludeToggle: (transactionId: number, excludeFromTotals: boolean) => void;
   onNotesSave: (transactionId: number, notes: string) => void;
+  onAddRule: (transaction: TransactionDto) => void;
   disabled?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function TransactionRow({
   onCategoryChange,
   onExcludeToggle,
   onNotesSave,
+  onAddRule,
   disabled,
 }: TransactionRowProps) {
   const [notes, setNotes] = useState(transaction.notes ?? '');
@@ -31,6 +33,11 @@ export function TransactionRow({
       <td>
         <div>{transaction.description ?? transaction.payee ?? 'Unknown'}</div>
         {transaction.internalTransfer && <Badge>Transfer</Badge>}
+        <div style={{ marginTop: '0.35rem' }}>
+          <Button type="button" variant="ghost" onClick={() => onAddRule(transaction)} disabled={disabled}>
+            Add Rule
+          </Button>
+        </div>
       </td>
       <td>{transaction.accountName ?? 'Unknown account'}</td>
       <td className={`number ${transaction.amount < 0 ? '' : ''}`}>{formatCurrency(transaction.amount)}</td>

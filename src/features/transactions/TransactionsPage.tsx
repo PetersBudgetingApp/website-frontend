@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
 import { formatDate } from '@domain/format';
 import { getAccounts } from '@shared/api/endpoints/accounts';
-import { getCategories } from '@shared/api/endpoints/categories';
-import { getTransactionCoverage, getTransactions, updateTransaction } from '@shared/api/endpoints/transactions';
+import { createCategorizationRule, getCategories } from '@shared/api/endpoints/categories';
+import { getTransactionCoverage, getTransactions, updateTransaction, type TransactionDto } from '@shared/api/endpoints/transactions';
 import type { TransactionFilters } from '@domain/types';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
@@ -14,9 +14,20 @@ import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { TransactionRow } from '@features/transactions/components/TransactionRow';
 
+const emptyRuleForm = {
+  name: '',
+  pattern: '',
+  patternType: 'CONTAINS' as 'CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'EXACT' | 'REGEX',
+  matchField: 'DESCRIPTION' as 'DESCRIPTION' | 'PAYEE' | 'MEMO',
+  categoryId: '',
+  priority: '0',
+  active: true,
+};
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TransactionFilters>(defaultTransactionFilters());
+  const [ruleForm, setRuleForm] = useState<null | (typeof emptyRuleForm & { source: string })>(null);
 
   const accountsQuery = useQuery({
     queryKey: queryKeys.accounts.all(),
@@ -53,7 +64,42 @@ export function TransactionsPage() {
     },
   });
 
+  const createRuleMutation = useMutation({
+    mutationFn: createCategorizationRule,
+    onSuccess: () => {
+      setRuleForm(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.rules() });
+    },
+  });
+
   const categoryOptions = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+
+  const openRuleForm = (transaction: TransactionDto) => {
+    const description = (transaction.description ?? '').trim();
+    setRuleForm({
+      ...emptyRuleForm,
+      name: description,
+      pattern: description,
+      categoryId: transaction.category?.id ? String(transaction.category.id) : '',
+      source: transaction.description ?? transaction.payee ?? transaction.memo ?? 'Selected transaction',
+    });
+  };
+
+  const submitRule = () => {
+    if (!ruleForm) {
+      return;
+    }
+
+    createRuleMutation.mutate({
+      name: ruleForm.name.trim(),
+      pattern: ruleForm.pattern.trim(),
+      patternType: ruleForm.patternType,
+      matchField: ruleForm.matchField,
+      categoryId: Number(ruleForm.categoryId),
+      priority: Number(ruleForm.priority) || 0,
+      active: ruleForm.active,
+    });
+  };
 
   return (
     <section className="page">
@@ -174,6 +220,7 @@ export function TransactionsPage() {
                       updateMutation.mutate({ id: transactionId, payload: { excludeFromTotals } })
                     }
                     onNotesSave={(transactionId, notes) => updateMutation.mutate({ id: transactionId, payload: { notes } })}
+                    onAddRule={openRuleForm}
                   />
                 ))}
               </tbody>
@@ -201,6 +248,140 @@ export function TransactionsPage() {
           <EmptyState title="No transactions" description="Adjust filters or run a sync in Connections." />
         )}
       </Card>
+
+      {ruleForm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 24, 41, 0.35)',
+            display: 'grid',
+            placeItems: 'center',
+            zIndex: 20,
+            padding: '1rem',
+          }}
+        >
+          <div style={{ width: 'min(860px, 100%)' }}>
+            <Card
+              title="Add Auto-Categorization Rule"
+              actions={
+                <Button type="button" variant="secondary" onClick={() => setRuleForm(null)} disabled={createRuleMutation.isPending}>
+                  Close
+                </Button>
+              }
+            >
+              <p className="subtle" style={{ marginBottom: '1rem' }}>
+                Prefilled from: {ruleForm.source}
+              </p>
+
+              <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                <Input
+                  id="tx-rule-name"
+                  label="Rule name"
+                  value={ruleForm.name}
+                  onChange={(event) => setRuleForm((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+                />
+
+                <Input
+                  id="tx-rule-pattern"
+                  label="Match text"
+                  value={ruleForm.pattern}
+                  onChange={(event) => setRuleForm((prev) => (prev ? { ...prev, pattern: event.target.value } : prev))}
+                />
+
+                <Select
+                  id="tx-rule-category"
+                  label="Assign category"
+                  value={ruleForm.categoryId}
+                  onChange={(event) => setRuleForm((prev) => (prev ? { ...prev, categoryId: event.target.value } : prev))}
+                >
+                  <option value="">Select category</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </Select>
+
+                <Select
+                  id="tx-rule-match-field"
+                  label="Match field"
+                  value={ruleForm.matchField}
+                  onChange={(event) =>
+                    setRuleForm((prev) =>
+                      prev ? { ...prev, matchField: event.target.value as 'DESCRIPTION' | 'PAYEE' | 'MEMO' } : prev,
+                    )
+                  }
+                >
+                  <option value="DESCRIPTION">Description</option>
+                  <option value="PAYEE">Payee</option>
+                  <option value="MEMO">Memo</option>
+                </Select>
+
+                <Select
+                  id="tx-rule-pattern-type"
+                  label="Pattern type"
+                  value={ruleForm.patternType}
+                  onChange={(event) =>
+                    setRuleForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            patternType: event.target.value as 'CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'EXACT' | 'REGEX',
+                          }
+                        : prev,
+                    )
+                  }
+                >
+                  <option value="CONTAINS">Contains</option>
+                  <option value="STARTS_WITH">Starts with</option>
+                  <option value="ENDS_WITH">Ends with</option>
+                  <option value="EXACT">Exact</option>
+                  <option value="REGEX">Regex</option>
+                </Select>
+
+                <Input
+                  id="tx-rule-priority"
+                  label="Priority"
+                  type="number"
+                  value={ruleForm.priority}
+                  onChange={(event) => setRuleForm((prev) => (prev ? { ...prev, priority: event.target.value } : prev))}
+                />
+
+                <Select
+                  id="tx-rule-active"
+                  label="Status"
+                  value={ruleForm.active ? 'active' : 'inactive'}
+                  onChange={(event) =>
+                    setRuleForm((prev) => (prev ? { ...prev, active: event.target.value === 'active' } : prev))
+                  }
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </Select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <Button
+                  type="button"
+                  onClick={submitRule}
+                  disabled={
+                    createRuleMutation.isPending ||
+                    !ruleForm.name.trim() ||
+                    !ruleForm.pattern.trim() ||
+                    !ruleForm.categoryId
+                  }
+                >
+                  Create rule
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setRuleForm(null)} disabled={createRuleMutation.isPending}>
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -19,6 +19,7 @@ export const queryKeys = {
     tree: () => ['categories', 'tree'] as const,
     flat: () => ['categories', 'flat'] as const,
     rules: () => ['categories', 'rules'] as const,
+    ruleTransactions: (ruleId: number) => ['categories', 'rules', ruleId, 'transactions'] as const,
   },
   analytics: {
     all: () => ['analytics'] as const,
