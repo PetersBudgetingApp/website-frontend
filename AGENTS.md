@@ -81,6 +81,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - `/transactions` -> `TransactionsPage`
 - `/categories` -> `CategoriesPage`
 - `/budgets` -> `BudgetsPage`
+- `/recurring` -> `RecurringPage`
+- `/accounts/:id` -> `AccountDetailPage` (detail view, not in nav)
 
 ### Guards
 - `RequireAuth` redirects non-authenticated users to `/login`.
@@ -111,6 +113,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `src/shared/api/endpoints/categories.ts`
   - `src/shared/api/endpoints/analytics.ts`
   - `src/shared/api/endpoints/budgets.ts`
+  - `src/shared/api/endpoints/recurring.ts`
 - Auth/session:
   - `src/shared/auth/authApi.ts`
   - `src/shared/auth/sessionStore.ts`
@@ -125,17 +128,21 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `src/features/transactions/TransactionsPage.tsx`
   - `src/features/categories/CategoriesPage.tsx`
   - `src/features/budgets/BudgetsPage.tsx`
+  - `src/features/recurring/RecurringPage.tsx`
+  - `src/features/accounts/AccountDetailPage.tsx`
 - Shared UI and styling:
   - `src/shared/ui/*`
   - `src/app/styles.css`
 
 ## Query Key Canonical Families
 - `queryKeys.accounts.all()` -> `['accounts']`
+- `queryKeys.accounts.detail(id)` -> `['accounts', id]`
 - `queryKeys.accounts.summary()` -> `['accounts', 'summary']`
 - `queryKeys.connections.all()` -> `['connections']`
 - `queryKeys.transactions.all()` -> `['transactions']`
 - `queryKeys.transactions.list(filters)` -> `['transactions', filters]`
 - `queryKeys.transactions.coverage()` -> `['transactions', 'coverage']`
+- `queryKeys.transactions.transfers()` -> `['transactions', 'transfers']`
 - `queryKeys.transactions.uncategorized(startDate, endDate)`
 - `queryKeys.categories.all()` -> `['categories']`
 - `queryKeys.categories.tree()` -> `['categories', 'tree']`
@@ -147,6 +154,9 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - `queryKeys.analytics.trends(months)`
 - `queryKeys.budgets.all()` -> `['budgets']`
 - `queryKeys.budgets.month(month)` -> `['budgets', month]`
+- `queryKeys.recurring.all()` -> `['recurring']`
+- `queryKeys.recurring.upcoming()` -> `['recurring', 'upcoming']`
+- `queryKeys.recurring.calendar(month)` -> `['recurring', 'calendar', month]`
 
 ## Feature Ownership And API/Cache Behavior
 
@@ -188,9 +198,12 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - flat categories
   - transaction list by filters
   - transaction coverage summary
-- Mutation:
+  - transfer pairs
+- Mutations:
   - update transaction (category/notes/excludeFromTotals)
   - create categorization rule from selected transaction defaults
+  - mark transfer pair
+  - unlink transfer pair
 - Invalidation on update:
   - `transactions.all`, `analytics.all`
 
@@ -222,6 +235,24 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Writes:
   - upsert monthly targets (`PUT /budgets/{month}`)
   - delete category target (`DELETE /budgets/{month}/categories/{categoryId}`)
+
+### Recurring (`src/features/recurring/RecurringPage.tsx`)
+- Reads:
+  - recurring patterns
+  - upcoming bills
+- Mutations:
+  - detect recurring patterns
+  - toggle pattern active/inactive
+  - delete pattern
+- Invalidation:
+  - `recurring.all`, `recurring.upcoming`
+
+### Account Detail (`src/features/accounts/AccountDetailPage.tsx`)
+- Reads:
+  - account detail by id
+  - transactions filtered by account id
+- No mutations (read-only view)
+- Navigated to from Dashboard net worth breakdown account links
 
 ## API Layer Contract Rules
 1. Every endpoint function should validate payload with Zod schema when response JSON has shape constraints.
@@ -295,8 +326,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 4. Verify downstream pages depending on invalidated keys refresh as expected.
 
 ## Known Functional Gaps
-- No UI route/page for recurring management yet.
-- No UI for transfer pair management yet.
+- No user-facing categorization-rule management page (rules are managed inline from Transactions and Categories pages).
 
 ## Notes Protocol (Required)
 When the user supplies a correction that resolves a real issue:

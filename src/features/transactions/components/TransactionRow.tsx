@@ -13,6 +13,7 @@ interface TransactionRowProps {
   onExcludeToggle: (transactionId: number, excludeFromTotals: boolean) => void;
   onNotesSave: (transactionId: number, notes: string) => void;
   onAddRule: (transaction: TransactionDto) => void;
+  onMarkTransfer?: (transactionId: number, pairTransactionId: number) => void;
   disabled?: boolean;
 }
 
@@ -23,9 +24,12 @@ export function TransactionRow({
   onExcludeToggle,
   onNotesSave,
   onAddRule,
+  onMarkTransfer,
   disabled,
 }: TransactionRowProps) {
   const [notes, setNotes] = useState(transaction.notes ?? '');
+  const [showTransferForm, setShowTransferForm] = useState(false);
+  const [pairId, setPairId] = useState('');
 
   return (
     <tr>
@@ -33,10 +37,47 @@ export function TransactionRow({
       <td>
         <div>{transaction.description ?? transaction.payee ?? 'Unknown'}</div>
         {transaction.internalTransfer && <Badge>Transfer</Badge>}
-        <div style={{ marginTop: '0.35rem' }}>
+        <div style={{ marginTop: '0.35rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button type="button" variant="ghost" onClick={() => onAddRule(transaction)} disabled={disabled}>
             Add Rule
           </Button>
+          {onMarkTransfer && !transaction.internalTransfer && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowTransferForm((prev) => !prev)}
+                disabled={disabled}
+              >
+                Mark Transfer
+              </Button>
+              {showTransferForm && (
+                <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                  <input
+                    className="input"
+                    style={{ width: '6rem' }}
+                    type="number"
+                    placeholder="Pair ID"
+                    value={pairId}
+                    onChange={(e) => setPairId(e.target.value)}
+                    disabled={disabled}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={disabled || !pairId}
+                    onClick={() => {
+                      onMarkTransfer(transaction.id, Number(pairId));
+                      setPairId('');
+                      setShowTransferForm(false);
+                    }}
+                  >
+                    Link
+                  </Button>
+                </span>
+              )}
+            </>
+          )}
         </div>
       </td>
       <td>{transaction.accountName ?? 'Unknown account'}</td>

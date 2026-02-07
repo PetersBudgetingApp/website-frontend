@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { NetWorthBreakdownCard } from '@features/dashboard/components/NetWorthBreakdownCard';
 
 describe('NetWorthBreakdownCard', () => {
   it('groups account rows into asset and liability sections', () => {
     render(
+      <MemoryRouter>
       <NetWorthBreakdownCard
         summary={{
           totalAssets: 150,
@@ -56,7 +58,8 @@ describe('NetWorthBreakdownCard', () => {
             },
           ],
         }}
-      />,
+      />
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Net Worth Breakdown')).toBeInTheDocument();

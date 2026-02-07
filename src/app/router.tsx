@@ -8,6 +8,8 @@ import { ConnectionsPage } from '@features/connections/ConnectionsPage';
 import { TransactionsPage } from '@features/transactions/TransactionsPage';
 import { CategoriesPage } from '@features/categories/CategoriesPage';
 import { BudgetsPage } from '@features/budgets/BudgetsPage';
+import { RecurringPage } from '@features/recurring/RecurringPage';
+import { AccountDetailPage } from '@features/accounts/AccountDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +32,8 @@ export const router = createBrowserRouter([
           { path: appRoutes.transactions, element: <TransactionsPage /> },
           { path: appRoutes.categories, element: <CategoriesPage /> },
           { path: appRoutes.budgets, element: <BudgetsPage /> },
+          { path: appRoutes.recurring, element: <RecurringPage /> },
+          { path: appRoutes.accountDetail, element: <AccountDetailPage /> },
         ],
       },
     ],

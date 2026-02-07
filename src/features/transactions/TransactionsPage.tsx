@@ -1,12 +1,21 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
-import { formatDate } from '@domain/format';
+import { formatCurrency, formatDate } from '@domain/format';
 import { getAccounts } from '@shared/api/endpoints/accounts';
 import { createCategorizationRule, getCategories } from '@shared/api/endpoints/categories';
-import { getTransactionCoverage, getTransactions, updateTransaction, type TransactionDto } from '@shared/api/endpoints/transactions';
+import {
+  getTransactionCoverage,
+  getTransactions,
+  getTransfers,
+  markTransfer,
+  unlinkTransfer,
+  updateTransaction,
+  type TransactionDto,
+} from '@shared/api/endpoints/transactions';
 import type { TransactionFilters } from '@domain/types';
 import { queryKeys } from '@shared/query/keys';
+import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
@@ -71,6 +80,27 @@ export function TransactionsPage() {
     onSuccess: () => {
       setRuleForm(null);
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.rules() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+    },
+  });
+
+  const transfersQuery = useQuery({
+    queryKey: queryKeys.transactions.transfers(),
+    queryFn: getTransfers,
+  });
+
+  const markTransferMutation = useMutation({
+    mutationFn: ({ id, pairId }: { id: number; pairId: number }) => markTransfer(id, pairId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+    },
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: unlinkTransfer,
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
     },
@@ -232,13 +262,14 @@ export function TransactionsPage() {
                     key={transaction.id}
                     transaction={transaction}
                     categories={categoryOptions}
-                    disabled={updateMutation.isPending}
+                    disabled={updateMutation.isPending || markTransferMutation.isPending}
                     onCategoryChange={(transactionId, categoryId) => updateMutation.mutate({ id: transactionId, payload: { categoryId } })}
                     onExcludeToggle={(transactionId, excludeFromTotals) =>
                       updateMutation.mutate({ id: transactionId, payload: { excludeFromTotals } })
                     }
                     onNotesSave={(transactionId, notes) => updateMutation.mutate({ id: transactionId, payload: { notes } })}
                     onAddRule={openRuleForm}
+                    onMarkTransfer={(transactionId, pairId) => markTransferMutation.mutate({ id: transactionId, pairId })}
                   />
                 ))}
               </tbody>
@@ -264,6 +295,48 @@ export function TransactionsPage() {
           </>
         ) : (
           <EmptyState title="No transactions" description="Adjust filters or run a sync in Connections." />
+        )}
+      </Card>
+
+      <Card title="Transfer Pairs">
+        {transfersQuery.data && transfersQuery.data.length > 0 ? (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>From Account</th>
+                <th>To Account</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transfersQuery.data.map((pair) => (
+                <tr key={`${pair.fromTransactionId}-${pair.toTransactionId}`}>
+                  <td>{formatDate(pair.date)}</td>
+                  <td>{pair.description ?? 'Transfer'}</td>
+                  <td>{pair.fromAccountName}</td>
+                  <td>{pair.toAccountName}</td>
+                  <td className="number">{formatCurrency(pair.amount)}</td>
+                  <td>{pair.autoDetected ? <Badge>Auto-detected</Badge> : <Badge>Manual</Badge>}</td>
+                  <td>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => unlinkMutation.mutate(pair.fromTransactionId)}
+                      disabled={unlinkMutation.isPending}
+                    >
+                      Unlink
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <EmptyState title="No transfer pairs" description="Transfer pairs will appear here when transactions are linked as internal transfers." />
         )}
       </Card>
 

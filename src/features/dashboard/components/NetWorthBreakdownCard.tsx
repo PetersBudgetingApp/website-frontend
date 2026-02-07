@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { formatCurrency } from '@domain/format';
 import type { AccountSummaryDto } from '@shared/api/endpoints/accounts';
 import { Card } from '@shared/ui/Card';
@@ -119,7 +120,7 @@ export function NetWorthBreakdownCard({ summary }: NetWorthBreakdownCardProps) {
                     <tbody>
                       {group.accounts.map((item) => (
                         <tr key={`asset-${item.id}`}>
-                          <td>{item.name}</td>
+                          <td><Link to={`/accounts/${item.id}`}>{item.name}</Link></td>
                           <td className="number">{formatCurrency(item.amount)}</td>
                         </tr>
                       ))}
@@ -150,7 +151,7 @@ export function NetWorthBreakdownCard({ summary }: NetWorthBreakdownCardProps) {
                     <tbody>
                       {group.accounts.map((item) => (
                         <tr key={`liability-${item.id}`}>
-                          <td>{item.name}</td>
+                          <td><Link to={`/accounts/${item.id}`}>{item.name}</Link></td>
                           <td className="number">{formatCurrency(item.amount)}</td>
                         </tr>
                       ))}

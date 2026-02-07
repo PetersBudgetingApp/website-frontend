@@ -13,6 +13,12 @@ export async function getAccounts() {
   });
 }
 
+export async function getAccount(id: number) {
+  return apiClient.request(`accounts/${id}`, {
+    schema: accountSchema,
+  });
+}
+
 export async function getAccountSummary() {
   return apiClient.request('accounts/summary', {
     schema: accountSummarySchema,

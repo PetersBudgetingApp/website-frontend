@@ -3,6 +3,7 @@ import type { TransactionFilters } from '@domain/types';
 export const queryKeys = {
   accounts: {
     all: () => ['accounts'] as const,
+    detail: (id: number) => ['accounts', id] as const,
     summary: () => ['accounts', 'summary'] as const,
   },
   connections: {
@@ -12,6 +13,7 @@ export const queryKeys = {
     all: () => ['transactions'] as const,
     list: (filters: TransactionFilters) => ['transactions', filters] as const,
     coverage: () => ['transactions', 'coverage'] as const,
+    transfers: () => ['transactions', 'transfers'] as const,
     uncategorized: (startDate: string, endDate: string) => ['transactions', 'uncategorized', startDate, endDate] as const,
   },
   categories: {
@@ -30,5 +32,10 @@ export const queryKeys = {
   budgets: {
     all: () => ['budgets'] as const,
     month: (month: string) => ['budgets', month] as const,
+  },
+  recurring: {
+    all: () => ['recurring'] as const,
+    upcoming: () => ['recurring', 'upcoming'] as const,
+    calendar: (month: string) => ['recurring', 'calendar', month] as const,
   },
 };

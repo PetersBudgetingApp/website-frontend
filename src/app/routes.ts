@@ -6,6 +6,8 @@ export const appRoutes = {
   transactions: '/transactions',
   categories: '/categories',
   budgets: '/budgets',
+  recurring: '/recurring',
+  accountDetail: '/accounts/:id',
 } as const;
 
 export interface NavigationRoute {
@@ -19,6 +21,7 @@ export const navigationRoutes: readonly NavigationRoute[] = [
   { path: appRoutes.transactions, label: 'Transactions' },
   { path: appRoutes.categories, label: 'Categories' },
   { path: appRoutes.budgets, label: 'Budgets' },
+  { path: appRoutes.recurring, label: 'Recurring' },
 ];
 
 export const defaultAuthenticatedRoute = appRoutes.dashboard;
