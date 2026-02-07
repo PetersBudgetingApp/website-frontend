@@ -49,6 +49,7 @@ export interface TransactionFilters {
   startDate?: string;
   endDate?: string;
   categoryId?: number;
+  uncategorized?: boolean;
   accountId?: number;
   limit: number;
   offset: number;

@@ -24,6 +24,7 @@ export async function getTransactions(filters: TransactionFilters) {
       startDate: filters.startDate,
       endDate: filters.endDate,
       categoryId: filters.categoryId,
+      uncategorized: filters.uncategorized,
       accountId: filters.accountId,
       limit: filters.limit,
       offset: filters.offset,

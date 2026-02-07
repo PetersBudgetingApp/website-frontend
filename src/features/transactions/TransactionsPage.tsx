@@ -24,6 +24,8 @@ const emptyRuleForm = {
   active: true,
 };
 
+const UNCATEGORIZED_FILTER_VALUE = '__uncategorized__';
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TransactionFilters>(defaultTransactionFilters());
@@ -75,6 +77,10 @@ export function TransactionsPage() {
   });
 
   const categoryOptions = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+  const categoryFilterOptions = useMemo(
+    () => categoryOptions.filter((category) => !(category.system && category.name.toLowerCase() === 'uncategorized')),
+    [categoryOptions],
+  );
 
   const openRuleForm = (transaction: TransactionDto) => {
     const description = (transaction.description ?? '').trim();
@@ -144,13 +150,23 @@ export function TransactionsPage() {
           <Select
             id="category-filter"
             label="Category"
-            value={filters.categoryId ?? ''}
-            onChange={(event) =>
-              setFilters((prev) => ({ ...prev, categoryId: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))
-            }
+            value={filters.uncategorized ? UNCATEGORIZED_FILTER_VALUE : filters.categoryId ?? ''}
+            onChange={(event) => {
+              const value = event.target.value;
+              setFilters((prev) => {
+                if (value === '') {
+                  return { ...prev, categoryId: undefined, uncategorized: undefined, offset: 0 };
+                }
+                if (value === UNCATEGORIZED_FILTER_VALUE) {
+                  return { ...prev, categoryId: undefined, uncategorized: true, offset: 0 };
+                }
+                return { ...prev, categoryId: Number(value), uncategorized: undefined, offset: 0 };
+              });
+            }}
           >
             <option value="">All categories</option>
-            {categoryOptions.map((category) => (
+            <option value={UNCATEGORIZED_FILTER_VALUE}>Uncategorized</option>
+            {categoryFilterOptions.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
