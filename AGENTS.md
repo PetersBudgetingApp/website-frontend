@@ -211,6 +211,25 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
     - user can add/remove filters and choose `AND`/`OR`
   - mark transfer pair
   - unlink transfer pair
+- Unified Transactions row UX:
+  - each transaction renders as a two-line grouped row:
+    - top line: `Date`, `Description`, `Amount`
+    - bottom line: `Account`, `Category`, `Notes`
+  - parent row shows ID on the left and a centered 3-dot actions menu on the right
+  - row-level actions are in that menu (`Notes`, `Exclude from totals`, `Add Rule`, `Mark Transfer`)
+  - notes are edited in the menu and autosave (no explicit Save button)
+  - desktop/vertical-monitor widths keep the two 3-field grouped lines
+  - mid-range widths (`561px` to `760px`) switch to stacked field areas (`date/amount`, then description, account, category, notes)
+  - mobile layout collapses grouped lines to single-column fields without page-level horizontal scrolling
+- Transfer Pairs card UX:
+  - each transfer pair renders as the same two-line grouped row pattern with left-side IDs and right-side action area
+  - top line: `Date`, `Description`, `Amount`
+  - bottom line: `From Account`, `To Account`, `Type`
+  - mid-range widths (`561px` to `760px`) use stacked field areas (`date/amount`, description, from account, to account, type)
+  - small-screen behavior matches Unified Transactions (single-column grouped fields on mobile)
+- Filters card UX:
+  - filter inputs use a responsive grid (desktop 6 columns, medium 3 columns, tablet 2 columns, mobile 1 column)
+  - transfer toggle spans full row on medium/tablet/mobile to avoid label/input compression
 - Invalidation on update:
   - `transactions.all`, `analytics.all`
 
@@ -350,4 +369,5 @@ When the user supplies a correction that resolves a real issue:
 Use `notes_to_agent/_note_template.md` for note structure.
 
 ## Learned Fixes
-- None yet.
+- For wide tables inside grid/card layouts, set `min-width: 0` on container grid items and use an internal `overflow-x: auto` wrapper so horizontal overflow stays inside the component instead of expanding the entire page.
+- For dense transactional datasets on mobile, prefer grouped two-line rows with labeled fields over multi-column tables; keep primary metadata and actions at parent level (ID left, actions right) and collapse field grids at small breakpoints.

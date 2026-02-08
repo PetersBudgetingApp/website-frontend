@@ -16,4 +16,7 @@ Use this as the navigation hub for durable project notes.
 
 | Date | Title | Area | Tags | File |
 | --- | --- | --- | --- | --- |
+| 2026-02-08 | Transactions Responsive Polish (Vertical, Filters, Transfer Pairs) | transactions-ui | responsive, vertical-monitor, filters, transfer-pairs, mobile | [2026-02-08-transactions-vertical-filters-transfer-pairs-responsive-polish.md](./2026-02-08-transactions-vertical-filters-transfer-pairs-responsive-polish.md) |
+| 2026-02-08 | Unified Transactions Two-Line Layout (No Horizontal Scroll) | transactions-ui | responsive, mobile, layout, actions-menu, no-horizontal-scroll | [2026-02-08-transactions-two-line-layout-no-horizontal-scroll.md](./2026-02-08-transactions-two-line-layout-no-horizontal-scroll.md) |
+| 2026-02-08 | Unified Transactions Actions Menu, Autosave, and Overflow Fix | transactions-ui | table-layout, responsive, autosave, notes, actions-menu | [2026-02-08-transactions-actions-menu-autosave-overflow.md](./2026-02-08-transactions-actions-menu-autosave-overflow.md) |
 | 2026-02-06 | Frontend Codebase Orientation | architecture | bootstrap, routing, api, testing | [2026-02-06-frontend-codebase-orientation.md](./2026-02-06-frontend-codebase-orientation.md) |

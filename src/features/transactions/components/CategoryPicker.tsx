@@ -4,13 +4,14 @@ interface CategoryPickerProps {
   categories: CategoryDto[];
   value?: number | null;
   disabled?: boolean;
+  className?: string;
   onChange: (categoryId: number | null) => void;
 }
 
-export function CategoryPicker({ categories, value, disabled, onChange }: CategoryPickerProps) {
+export function CategoryPicker({ categories, value, disabled, className = '', onChange }: CategoryPickerProps) {
   return (
     <select
-      className="select"
+      className={`select ${className}`.trim()}
       aria-label="Category"
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}

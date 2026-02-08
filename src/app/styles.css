@@ -28,9 +28,14 @@ body,
   margin: 0;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Manrope', 'Segoe UI', sans-serif;
   color: var(--text);
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 0 0, #dee9ff 0%, transparent 30%),
     radial-gradient(circle at 100% 0, #e8fff8 0%, transparent 30%),
@@ -124,11 +129,13 @@ a {
   padding: 1.5rem;
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .page {
   display: grid;
   gap: 0.65rem;
+  min-width: 0;
 }
 
 .center-page {
@@ -142,6 +149,7 @@ a {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  min-width: 0;
 }
 
 .card-header {
@@ -154,6 +162,7 @@ a {
 
 .card-body {
   padding: 1rem;
+  min-width: 0;
 }
 
 .btn {
@@ -242,6 +251,36 @@ textarea {
   gap: 0.85rem;
 }
 
+.transactions-filters-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: end;
+}
+
+.transactions-filters-grid > .field {
+  min-width: 0;
+}
+
+.transactions-filters-transfers {
+  min-width: 0;
+  align-self: end;
+}
+
+.transactions-filters-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 42px;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.transactions-filters-checkbox input {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
 .badge {
   display: inline-flex;
   border-radius: 999px;
@@ -292,6 +331,12 @@ textarea {
   border-collapse: collapse;
 }
 
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .table th,
 .table td {
   border-bottom: 1px solid var(--border);
@@ -304,6 +349,163 @@ textarea {
   font-size: 0.85rem;
   color: var(--text-soft);
   font-weight: 700;
+}
+
+.transactions-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.transfer-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.transaction-entry,
+.transfer-entry {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fbfdff;
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.transaction-entry-id,
+.transfer-entry-id {
+  align-self: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  min-width: 3rem;
+}
+
+.transfer-entry-id {
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+}
+
+.transaction-entry-main,
+.transfer-entry-main {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.transaction-entry-line,
+.transfer-entry-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.transaction-entry-line-secondary {
+  grid-template-columns: minmax(0, 1.1fr) minmax(14rem, 2fr) minmax(0, 0.9fr);
+}
+
+.transaction-entry-field,
+.transfer-entry-field {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.transaction-entry-field .subtle,
+.transfer-entry-field .subtle {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.transaction-entry-description p,
+.transfer-entry-description p,
+.transaction-entry-account p,
+.transaction-entry-notes p,
+.transfer-entry-from-account p,
+.transfer-entry-to-account p {
+  word-break: break-word;
+}
+
+.transaction-entry-description .badge {
+  width: fit-content;
+}
+
+.transaction-entry-amount-value,
+.transfer-entry-amount-value {
+  white-space: nowrap;
+}
+
+.transaction-category-picker {
+  width: 100%;
+  min-width: 13rem;
+}
+
+.transaction-notes-preview {
+  min-height: 1.2rem;
+}
+
+.transaction-entry-actions,
+.transfer-entry-actions {
+  position: relative;
+  align-self: center;
+}
+
+.transaction-row-menu {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.transaction-row-menu-trigger {
+  min-width: 2.2rem;
+  padding: 0.45rem 0.55rem;
+  line-height: 1;
+}
+
+.transaction-row-menu-popover {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 10;
+  width: 17rem;
+  max-width: min(17rem, calc(100vw - 2.5rem));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 0.6rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.transaction-row-menu-item {
+  width: 100%;
+  text-align: left;
+  padding-inline: 0.7rem;
+}
+
+.transaction-row-menu-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.transaction-row-menu-section {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.transaction-row-transfer-linker {
+  grid-template-columns: 1fr auto;
+  align-items: center;
 }
 
 .number {
@@ -512,6 +714,16 @@ textarea {
   }
 }
 
+@media (max-width: 1200px) {
+  .transactions-filters-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .transactions-filters-transfers {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -555,6 +767,139 @@ textarea {
   .page-content {
     padding: 1rem;
   }
+
+  .transaction-entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'id actions'
+      'main main';
+  }
+
+  .transfer-entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'id actions'
+      'main main';
+  }
+
+  .transaction-entry-id {
+    grid-area: id;
+    align-self: center;
+  }
+
+  .transfer-entry-id {
+    grid-area: id;
+    text-align: left;
+    align-self: center;
+  }
+
+  .transaction-entry-main {
+    grid-area: main;
+  }
+
+  .transfer-entry-main {
+    grid-area: main;
+  }
+
+  .transaction-entry-actions {
+    grid-area: actions;
+  }
+
+  .transfer-entry-actions {
+    grid-area: actions;
+  }
+
+  .transactions-filters-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .transactions-filters-transfers {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) and (min-width: 561px) {
+  .transaction-entry-date {
+    grid-area: date;
+  }
+
+  .transaction-entry-amount {
+    grid-area: amount;
+  }
+
+  .transaction-entry-description {
+    grid-area: description;
+  }
+
+  .transaction-entry-account {
+    grid-area: account;
+  }
+
+  .transaction-entry-category {
+    grid-area: category;
+  }
+
+  .transaction-entry-notes {
+    grid-area: notes;
+  }
+
+  .transfer-entry-date {
+    grid-area: date;
+  }
+
+  .transfer-entry-amount {
+    grid-area: amount;
+  }
+
+  .transfer-entry-description {
+    grid-area: description;
+  }
+
+  .transfer-entry-from-account {
+    grid-area: fromAccount;
+  }
+
+  .transfer-entry-to-account {
+    grid-area: toAccount;
+  }
+
+  .transfer-entry-type {
+    grid-area: type;
+  }
+
+  .transaction-entry-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'date amount'
+      'description description'
+      'account account'
+      'category category'
+      'notes notes';
+    row-gap: 0.6rem;
+    column-gap: 0.85rem;
+  }
+
+  .transfer-entry-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'date amount'
+      'description description'
+      'fromAccount fromAccount'
+      'toAccount toAccount'
+      'type type';
+    row-gap: 0.6rem;
+    column-gap: 0.85rem;
+  }
+
+  .transaction-entry-line,
+  .transaction-entry-line-secondary,
+  .transfer-entry-line {
+    display: contents;
+  }
+
+  .transaction-category-picker {
+    min-width: 0;
+  }
 }
 
 @media (max-width: 560px) {
@@ -580,6 +925,29 @@ textarea {
 
   .trend-chart {
     min-height: 210px;
+  }
+
+  .transaction-entry {
+    padding: 0.65rem;
+  }
+
+  .transaction-entry-line,
+  .transfer-entry-line,
+  .transaction-entry-line-secondary {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .transaction-category-picker {
+    min-width: 0;
+  }
+
+  .transactions-filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transactions-filters-transfers {
+    grid-column: auto;
   }
 }
 

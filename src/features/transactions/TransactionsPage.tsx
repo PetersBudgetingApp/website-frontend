@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
-import { formatCurrency, formatDate } from '@domain/format';
+import { formatDate } from '@domain/format';
 import { getAccounts } from '@shared/api/endpoints/accounts';
 import {
   createCategorizationRule,
@@ -21,13 +21,13 @@ import {
 } from '@shared/api/endpoints/transactions';
 import type { TransactionFilters } from '@domain/types';
 import { queryKeys } from '@shared/query/keys';
-import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
 import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { TransactionRow } from '@features/transactions/components/TransactionRow';
+import { TransferPairRow } from '@features/transactions/components/TransferPairRow';
 
 const emptyRuleForm = {
   name: '',
@@ -315,7 +315,7 @@ export function TransactionsPage() {
       <h2>Transactions</h2>
 
       <Card title="Filters">
-        <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
+        <div className="transactions-filters-grid">
           <Input
             id="start-date"
             type="date"
@@ -384,9 +384,9 @@ export function TransactionsPage() {
             ))}
           </Select>
 
-          <label className="field" htmlFor="include-transfers">
+          <div className="field transactions-filters-transfers">
             <span className="field-label">Transfers</span>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minHeight: '42px' }}>
+            <label className="transactions-filters-checkbox" htmlFor="include-transfers">
               <input
                 id="include-transfers"
                 type="checkbox"
@@ -395,9 +395,9 @@ export function TransactionsPage() {
                   setFilters((prev) => ({ ...prev, includeTransfers: event.target.checked, offset: 0 }))
                 }
               />
-              Include internal transfers
+              <span>Include internal transfers</span>
             </label>
-          </label>
+          </div>
         </div>
       </Card>
 
@@ -443,37 +443,25 @@ export function TransactionsPage() {
       >
         {transactionsQuery.data && transactionsQuery.data.length > 0 ? (
           <>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Account</th>
-                  <th>Amount</th>
-                  <th>Category</th>
-                  <th>Totals</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactionsQuery.data.map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
-                    categories={categoryOptions}
-                    disabled={updateMutation.isPending || markTransferMutation.isPending}
-                    onCategoryChange={(transactionId, categoryId) => updateMutation.mutate({ id: transactionId, payload: { categoryId } })}
-                    onExcludeToggle={(transactionId, excludeFromTotals) =>
-                      updateMutation.mutate({ id: transactionId, payload: { excludeFromTotals } })
-                    }
-                    onNotesSave={(transactionId, notes) => updateMutation.mutate({ id: transactionId, payload: { notes } })}
-                    onAddRule={openRuleForm}
-                    onMarkTransfer={(transactionId, pairId) => markTransferMutation.mutate({ id: transactionId, pairId })}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <div className="transactions-list" role="list" aria-label="Unified transactions">
+              {transactionsQuery.data.map((transaction) => (
+                <TransactionRow
+                  key={transaction.id}
+                  transaction={transaction}
+                  categories={categoryOptions}
+                  disabled={markTransferMutation.isPending}
+                  onCategoryChange={(transactionId, categoryId) =>
+                    updateMutation.mutate({ id: transactionId, payload: { categoryId } })
+                  }
+                  onExcludeToggle={(transactionId, excludeFromTotals) =>
+                    updateMutation.mutate({ id: transactionId, payload: { excludeFromTotals } })
+                  }
+                  onNotesChange={(transactionId, notes) => updateMutation.mutate({ id: transactionId, payload: { notes } })}
+                  onAddRule={openRuleForm}
+                  onMarkTransfer={(transactionId, pairId) => markTransferMutation.mutate({ id: transactionId, pairId })}
+                />
+              ))}
+            </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '1rem' }}>
               <Button
@@ -514,41 +502,16 @@ export function TransactionsPage() {
       >
         {transferPairCount > 0 ? (
           <>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>From Account</th>
-                  <th>To Account</th>
-                  <th>Amount</th>
-                  <th>Type</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagedTransferPairs.map((pair) => (
-                  <tr key={`${pair.fromTransactionId}-${pair.toTransactionId}`}>
-                    <td>{formatDate(pair.date)}</td>
-                    <td>{pair.description ?? 'Transfer'}</td>
-                    <td>{pair.fromAccountName}</td>
-                    <td>{pair.toAccountName}</td>
-                    <td className="number">{formatCurrency(pair.amount)}</td>
-                    <td>{pair.autoDetected ? <Badge>Auto-detected</Badge> : <Badge>Manual</Badge>}</td>
-                    <td>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => unlinkMutation.mutate(pair.fromTransactionId)}
-                        disabled={unlinkMutation.isPending}
-                      >
-                        Unlink
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="transfer-list" role="list" aria-label="Transfer pairs">
+              {pagedTransferPairs.map((pair) => (
+                <TransferPairRow
+                  key={`${pair.fromTransactionId}-${pair.toTransactionId}`}
+                  pair={pair}
+                  onUnlink={(fromTransactionId) => unlinkMutation.mutate(fromTransactionId)}
+                  disabled={unlinkMutation.isPending}
+                />
+              ))}
+            </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '1rem' }}>
               <Button variant="secondary" onClick={() => setTransferOffset((prev) => Math.max(0, prev - transferLimit))} disabled={transferOffset === 0}>
