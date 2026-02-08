@@ -23,6 +23,7 @@ export async function getTransactions(filters: TransactionFilters) {
       includeTransfers: filters.includeTransfers,
       startDate: filters.startDate,
       endDate: filters.endDate,
+      descriptionQuery: filters.descriptionQuery,
       categoryId: filters.categoryId,
       uncategorized: filters.uncategorized,
       accountId: filters.accountId,

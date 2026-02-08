@@ -144,7 +144,7 @@ export function TransactionsPage() {
       <h2>Transactions</h2>
 
       <Card title="Filters">
-        <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
+        <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
           <Input
             id="start-date"
             type="date"
@@ -159,6 +159,16 @@ export function TransactionsPage() {
             label="End"
             value={filters.endDate ?? ''}
             onChange={(event) => setFilters((prev) => ({ ...prev, endDate: event.target.value || undefined, offset: 0 }))}
+          />
+
+          <Input
+            id="description-filter"
+            label="Description"
+            placeholder="Search description"
+            value={filters.descriptionQuery ?? ''}
+            onChange={(event) =>
+              setFilters((prev) => ({ ...prev, descriptionQuery: event.target.value || undefined, offset: 0 }))
+            }
           />
 
           <Select

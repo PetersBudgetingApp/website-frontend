@@ -49,6 +49,7 @@ export interface TransactionFilters {
   includeTransfers: boolean;
   startDate?: string;
   endDate?: string;
+  descriptionQuery?: string;
   categoryId?: number;
   uncategorized?: boolean;
   accountId?: number;

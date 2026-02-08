@@ -201,6 +201,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - accounts list
   - flat categories
   - transaction list by filters
+    - includes `descriptionQuery` search (case-insensitive, ignores punctuation/special characters)
   - transaction coverage summary
   - transfer pairs
 - Mutations:
