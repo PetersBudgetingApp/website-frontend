@@ -14,7 +14,7 @@ export function isBudgetEligibleTransaction(tx: BudgetEligibleTransaction): bool
 export function defaultTransactionFilters(): TransactionFilters {
   return {
     includeTransfers: false,
-    limit: 100,
+    limit: 10,
     offset: 0,
   };
 }

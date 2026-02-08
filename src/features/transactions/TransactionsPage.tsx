@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
 import { formatCurrency, formatDate } from '@domain/format';
@@ -72,10 +72,13 @@ function allowedPatternTypes(field: RuleMatchField): RulePatternType[] {
 }
 
 const UNCATEGORIZED_FILTER_VALUE = '__uncategorized__';
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
 
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TransactionFilters>(defaultTransactionFilters());
+  const [transferOffset, setTransferOffset] = useState(0);
+  const [transferLimit, setTransferLimit] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [ruleForm, setRuleForm] = useState<null | (typeof emptyRuleForm & { source: string })>(null);
 
   const accountsQuery = useQuery({
@@ -149,6 +152,38 @@ export function TransactionsPage() {
     () => categoryOptions.filter((category) => !(category.system && category.name.toLowerCase() === 'uncategorized')),
     [categoryOptions],
   );
+  const transferPairs = transfersQuery.data ?? [];
+  const transferPairCount = transferPairs.length;
+  const pagedTransferPairs = useMemo(
+    () => transferPairs.slice(transferOffset, transferOffset + transferLimit),
+    [transferPairs, transferOffset, transferLimit],
+  );
+
+  useEffect(() => {
+    if (transferPairCount === 0) {
+      setTransferOffset(0);
+      return;
+    }
+    const maxOffset = Math.floor((transferPairCount - 1) / transferLimit) * transferLimit;
+    setTransferOffset((prev) => Math.min(prev, maxOffset));
+  }, [transferLimit, transferPairCount]);
+
+  const setUnifiedPageSize = (value: string) => {
+    const nextPageSize = Number(value);
+    if (!PAGE_SIZE_OPTIONS.includes(nextPageSize as (typeof PAGE_SIZE_OPTIONS)[number])) {
+      return;
+    }
+    setFilters((prev) => ({ ...prev, limit: nextPageSize, offset: 0 }));
+  };
+
+  const setTransferPageSize = (value: string) => {
+    const nextPageSize = Number(value);
+    if (!PAGE_SIZE_OPTIONS.includes(nextPageSize as (typeof PAGE_SIZE_OPTIONS)[number])) {
+      return;
+    }
+    setTransferLimit(nextPageSize as (typeof PAGE_SIZE_OPTIONS)[number]);
+    setTransferOffset(0);
+  };
 
   const openRuleForm = (transaction: TransactionDto) => {
     const description = (transaction.description ?? '').trim();
@@ -387,7 +422,25 @@ export function TransactionsPage() {
         )}
       </Card>
 
-      <Card title="Unified Transactions">
+      <Card
+        title="Unified Transactions"
+        actions={
+          <div style={{ width: '180px' }}>
+            <Select
+              id="unified-transactions-page-size"
+              label="Items per page"
+              value={String(filters.limit)}
+              onChange={(event) => setUnifiedPageSize(event.target.value)}
+            >
+              {PAGE_SIZE_OPTIONS.map((pageSizeOption) => (
+                <option key={pageSizeOption} value={pageSizeOption}>
+                  {pageSizeOption}
+                </option>
+              ))}
+            </Select>
+          </div>
+        }
+      >
         {transactionsQuery.data && transactionsQuery.data.length > 0 ? (
           <>
             <table className="table">
@@ -444,43 +497,72 @@ export function TransactionsPage() {
         )}
       </Card>
 
-      <Card title="Transfer Pairs">
-        {transfersQuery.data && transfersQuery.data.length > 0 ? (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>From Account</th>
-                <th>To Account</th>
-                <th>Amount</th>
-                <th>Type</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transfersQuery.data.map((pair) => (
-                <tr key={`${pair.fromTransactionId}-${pair.toTransactionId}`}>
-                  <td>{formatDate(pair.date)}</td>
-                  <td>{pair.description ?? 'Transfer'}</td>
-                  <td>{pair.fromAccountName}</td>
-                  <td>{pair.toAccountName}</td>
-                  <td className="number">{formatCurrency(pair.amount)}</td>
-                  <td>{pair.autoDetected ? <Badge>Auto-detected</Badge> : <Badge>Manual</Badge>}</td>
-                  <td>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => unlinkMutation.mutate(pair.fromTransactionId)}
-                      disabled={unlinkMutation.isPending}
-                    >
-                      Unlink
-                    </Button>
-                  </td>
-                </tr>
+      <Card
+        title="Transfer Pairs"
+        actions={
+          <div style={{ width: '180px' }}>
+            <Select id="transfer-pairs-page-size" label="Items per page" value={String(transferLimit)} onChange={(event) => setTransferPageSize(event.target.value)}>
+              {PAGE_SIZE_OPTIONS.map((pageSizeOption) => (
+                <option key={pageSizeOption} value={pageSizeOption}>
+                  {pageSizeOption}
+                </option>
               ))}
-            </tbody>
-          </table>
+            </Select>
+          </div>
+        }
+      >
+        {transferPairCount > 0 ? (
+          <>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>From Account</th>
+                  <th>To Account</th>
+                  <th>Amount</th>
+                  <th>Type</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedTransferPairs.map((pair) => (
+                  <tr key={`${pair.fromTransactionId}-${pair.toTransactionId}`}>
+                    <td>{formatDate(pair.date)}</td>
+                    <td>{pair.description ?? 'Transfer'}</td>
+                    <td>{pair.fromAccountName}</td>
+                    <td>{pair.toAccountName}</td>
+                    <td className="number">{formatCurrency(pair.amount)}</td>
+                    <td>{pair.autoDetected ? <Badge>Auto-detected</Badge> : <Badge>Manual</Badge>}</td>
+                    <td>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => unlinkMutation.mutate(pair.fromTransactionId)}
+                        disabled={unlinkMutation.isPending}
+                      >
+                        Unlink
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '1rem' }}>
+              <Button variant="secondary" onClick={() => setTransferOffset((prev) => Math.max(0, prev - transferLimit))} disabled={transferOffset === 0}>
+                Previous
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={() => setTransferOffset((prev) => prev + transferLimit)}
+                disabled={transferOffset + transferLimit >= transferPairCount}
+              >
+                Next
+              </Button>
+            </div>
+          </>
         ) : (
           <EmptyState title="No transfer pairs" description="Transfer pairs will appear here when transactions are linked as internal transfers." />
         )}
