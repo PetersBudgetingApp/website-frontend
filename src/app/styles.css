@@ -62,17 +62,19 @@ a {
 
 .app-shell {
   min-height: 100dvh;
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  position: relative;
 }
 
 .app-sidebar {
+  width: 250px;
   border-right: 1px solid var(--border);
   padding: 1.5rem 1rem;
   background: linear-gradient(160deg, #f9fbff 0%, #eef4ff 100%);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   height: 100dvh;
+  overflow-y: auto;
 }
 
 .brand {
@@ -109,6 +111,8 @@ a {
 }
 
 .app-content {
+  margin-left: 250px;
+  width: calc(100% - 250px);
   min-height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -123,6 +127,36 @@ a {
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(8px);
+}
+
+.app-header-main {
+  min-width: 0;
+}
+
+.app-header-mobile-title {
+  display: none;
+}
+
+.app-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mobile-menu-footer {
+  display: none;
+}
+
+.mobile-menu-email {
+  font-size: 0.95rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.mobile-menu-toggle,
+.mobile-menu-backdrop,
+.mobile-menu-drawer {
+  display: none;
 }
 
 .page-content {
@@ -548,6 +582,11 @@ textarea {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.dashboard-summary-grid {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
+}
+
 .net-worth-breakdown-card .card-body {
   display: grid;
   gap: 1rem;
@@ -721,17 +760,13 @@ textarea {
   background: currentColor;
 }
 
-.mobile-nav {
-  display: none;
-}
-
 @media (max-width: 1080px) {
   .grid-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .net-worth-breakdown-columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .trend-axis-label {
@@ -788,47 +823,199 @@ textarea {
 }
 
 @media (max-width: 860px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-    padding-bottom: 62px;
-  }
-
   .app-sidebar {
     display: none;
   }
 
-  .app-header {
-    position: sticky;
-    top: 0;
-    z-index: 8;
+  .app-content {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
-  .mobile-nav {
+  .app-header {
     position: fixed;
-    bottom: 0;
+    top: 0;
     left: 0;
     right: 0;
-    background: rgba(255, 255, 255, 0.96);
-    border-top: 1px solid var(--border);
+    z-index: 20;
+    padding: calc(env(safe-area-inset-top, 0px) + 0.7rem) 0.75rem 0.7rem;
+  }
+
+  .app-header-main {
+    flex: 1 1 auto;
+  }
+
+  .app-header-user-label,
+  .app-header-user-email,
+  .desktop-logout-btn {
+    display: none;
+  }
+
+  .app-header-mobile-title {
+    display: block;
+    font-size: 2rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+  }
+
+  .app-header-actions {
+    margin-left: auto;
+    flex: 0 0 auto;
+    gap: 0.4rem;
+  }
+
+  .mobile-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 100%;
+  }
+
+  .mobile-menu-toggle-label {
+    white-space: nowrap;
+  }
+
+  .app-header-actions .btn {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.85rem;
+  }
+
+  .mobile-menu-icon {
+    display: inline-grid;
+    gap: 0.2rem;
+  }
+
+  .mobile-menu-icon span {
+    display: block;
+    width: 1rem;
+    height: 2px;
+    border-radius: 99px;
+    background: currentColor;
+  }
+
+  .mobile-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: rgba(10, 26, 46, 0.42);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+    z-index: 25;
+  }
+
+  .mobile-menu-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .mobile-menu-drawer {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    z-index: 10;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 0.8rem;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(82vw, 20rem);
+    padding: calc(env(safe-area-inset-top, 0px) + 0.7rem) 0.95rem 0.9rem;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    transform: translateX(100%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 180ms ease;
+    z-index: 26;
   }
 
-  .mobile-nav-link {
-    text-align: center;
-    padding: 0.65rem 0.25rem;
-    color: var(--text-soft);
-    font-size: 0.75rem;
+  .mobile-menu-drawer.open {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .mobile-menu-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .mobile-menu-drawer-header p {
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .mobile-menu-close {
+    padding-inline: 0.75rem;
+  }
+
+  .mobile-menu-links {
+    display: grid;
+    gap: 0.45rem;
+    align-content: start;
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 0.05rem;
+  }
+
+  .mobile-menu-link {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.7rem 0.75rem;
     font-weight: 700;
+    color: var(--text-soft);
+    background: var(--surface-alt);
   }
 
-  .mobile-nav-link.active {
-    color: var(--brand);
+  .mobile-menu-link.active {
+    border-color: rgba(15, 111, 218, 0.34);
+    background: rgba(15, 111, 218, 0.12);
+    color: var(--text);
+  }
+
+  .mobile-menu-footer {
+    display: grid;
+    gap: 0.4rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+  }
+
+  .mobile-menu-logout {
+    width: 100%;
+  }
+
+  .dashboard-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page > h2 {
+    display: none;
   }
 
   .page-content {
-    padding: 1rem;
+    padding: calc(env(safe-area-inset-top, 0px) + 5.1rem) 0.75rem 1rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .page,
+  .grid-cards,
+  .summary-cards,
+  .dashboard-summary-grid,
+  .card {
+    width: 100%;
+    max-width: 100%;
   }
 
   .transaction-entry {

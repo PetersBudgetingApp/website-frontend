@@ -111,29 +111,31 @@ export function DashboardPage() {
         savingsRate={cashFlowQuery.data.savingsRate}
       />
 
-      <div className="grid-cards" style={{ gridTemplateColumns: '2fr 1fr' }}>
+      <div className="grid-cards dashboard-summary-grid">
         <Card title="Spending by Category (Current Month)">
           {spendingQuery.data.categories.length === 0 ? (
             <EmptyState title="No spending yet" description="Transactions will appear after sync." />
           ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Amount</th>
-                  <th>%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {spendingQuery.data.categories.slice(0, 8).map((item) => (
-                  <tr key={`${item.categoryName}-${item.categoryId ?? 'none'}`}>
-                    <td>{item.categoryName}</td>
-                    <td className="number">{formatCurrency(item.amount)}</td>
-                    <td className="number">{item.percentage.toFixed(1)}%</td>
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>%</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {spendingQuery.data.categories.slice(0, 8).map((item) => (
+                    <tr key={`${item.categoryName}-${item.categoryId ?? 'none'}`}>
+                      <td>{item.categoryName}</td>
+                      <td className="number">{formatCurrency(item.amount)}</td>
+                      <td className="number">{item.percentage.toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
 
