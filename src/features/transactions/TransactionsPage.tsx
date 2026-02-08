@@ -446,6 +446,7 @@ export function TransactionsPage() {
             <table className="table">
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Date</th>
                   <th>Description</th>
                   <th>Account</th>

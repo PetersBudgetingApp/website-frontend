@@ -33,6 +33,7 @@ export function TransactionRow({
 
   return (
     <tr>
+      <td className="number">{transaction.id}</td>
       <td>{formatDate(transaction.postedAt)}</td>
       <td>
         <div>{transaction.description ?? transaction.payee ?? 'Unknown'}</div>
