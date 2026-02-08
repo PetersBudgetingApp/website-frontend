@@ -207,6 +207,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Mutations:
   - update transaction (category/notes/excludeFromTotals)
   - create categorization rule from selected transaction defaults
+    - defaults now prefill 3 chained conditions: description + account + amount
+    - user can add/remove filters and choose `AND`/`OR`
   - mark transfer pair
   - unlink transfer pair
 - Invalidation on update:
@@ -220,6 +222,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - tracked transactions for selected categorization rule (`/categorization-rules/{id}/transactions`)
 - UX behavior:
   - clicking a category name opens an inline modal-like details panel directly under that category row in the tree (no separate bottom-of-page explorer section)
+  - rule editor supports chained filters with `AND`/`OR` across description/payee/memo/account/amount
 - Mutations:
   - create category
   - update category

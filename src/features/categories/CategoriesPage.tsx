@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency, formatDate } from '@domain/format';
+import { getAccounts } from '@shared/api/endpoints/accounts';
 import {
   createCategorizationRule,
   createCategory,
@@ -12,6 +13,10 @@ import {
   updateCategorizationRule,
   updateCategory,
   type CategoryDto,
+  type CategorizationRuleConditionDto,
+  type RuleConditionOperator,
+  type RuleMatchField,
+  type RulePatternType,
 } from '@shared/api/endpoints/categories';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
@@ -33,13 +38,85 @@ const emptyCategoryForm = {
 const emptyRuleForm = {
   id: null as number | null,
   name: '',
-  pattern: '',
-  patternType: 'CONTAINS' as 'CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'EXACT' | 'REGEX',
-  matchField: 'DESCRIPTION' as 'DESCRIPTION' | 'PAYEE' | 'MEMO',
+  conditionOperator: 'AND' as RuleConditionOperator,
+  conditions: [{ field: 'DESCRIPTION' as RuleMatchField, patternType: 'CONTAINS' as RulePatternType, value: '' }],
   categoryId: '',
   priority: '0',
   active: true,
 };
+
+const textPatternTypeOptions: { value: RulePatternType; label: string }[] = [
+  { value: 'CONTAINS', label: 'Contains' },
+  { value: 'STARTS_WITH', label: 'Starts with' },
+  { value: 'ENDS_WITH', label: 'Ends with' },
+  { value: 'EXACT', label: 'Exact' },
+  { value: 'REGEX', label: 'Regex' },
+];
+
+const amountPatternTypeOptions: { value: RulePatternType; label: string }[] = [
+  { value: 'EXACT', label: 'Exact' },
+  { value: 'EQUALS', label: 'Equals' },
+  { value: 'GREATER_THAN', label: 'Greater than' },
+  { value: 'GREATER_THAN_OR_EQUAL', label: 'Greater than or equal' },
+  { value: 'LESS_THAN', label: 'Less than' },
+  { value: 'LESS_THAN_OR_EQUAL', label: 'Less than or equal' },
+];
+
+const fieldLabelByValue: Record<RuleMatchField, string> = {
+  DESCRIPTION: 'Description',
+  PAYEE: 'Payee',
+  MEMO: 'Memo',
+  ACCOUNT: 'Account',
+  AMOUNT: 'Amount',
+};
+
+const patternTypeLabelByValue: Record<RulePatternType, string> = {
+  CONTAINS: 'contains',
+  STARTS_WITH: 'starts with',
+  ENDS_WITH: 'ends with',
+  EXACT: 'is exactly',
+  REGEX: 'matches regex',
+  EQUALS: 'equals',
+  GREATER_THAN: 'is greater than',
+  GREATER_THAN_OR_EQUAL: 'is greater than or equal to',
+  LESS_THAN: 'is less than',
+  LESS_THAN_OR_EQUAL: 'is less than or equal to',
+};
+
+function defaultPatternTypeForField(field: RuleMatchField): RulePatternType {
+  if (field === 'ACCOUNT') {
+    return 'EQUALS';
+  }
+  if (field === 'AMOUNT') {
+    return 'EQUALS';
+  }
+  return 'CONTAINS';
+}
+
+function allowedPatternTypes(field: RuleMatchField): RulePatternType[] {
+  if (field === 'ACCOUNT') {
+    return ['EQUALS', 'EXACT'];
+  }
+  if (field === 'AMOUNT') {
+    return amountPatternTypeOptions.map((option) => option.value);
+  }
+  return textPatternTypeOptions.map((option) => option.value);
+}
+
+function effectiveRuleConditions(rule: {
+  conditions?: CategorizationRuleConditionDto[];
+  matchField: RuleMatchField;
+  patternType: RulePatternType;
+  pattern: string;
+}): CategorizationRuleConditionDto[] {
+  if ((rule.conditions ?? []).length > 0) {
+    return rule.conditions ?? [];
+  }
+  if (!rule.pattern) {
+    return [];
+  }
+  return [{ field: rule.matchField, patternType: rule.patternType, value: rule.pattern }];
+}
 
 export function CategoriesPage() {
   const queryClient = useQueryClient();
@@ -51,6 +128,11 @@ export function CategoriesPage() {
   const categoriesTreeQuery = useQuery({
     queryKey: queryKeys.categories.tree(),
     queryFn: () => getCategories(false),
+  });
+
+  const accountsQuery = useQuery({
+    queryKey: queryKeys.accounts.all(),
+    queryFn: getAccounts,
   });
 
   const categoriesFlatQuery = useQuery({
@@ -102,11 +184,19 @@ export function CategoriesPage() {
 
   const saveRuleMutation = useMutation({
     mutationFn: async () => {
+      const normalizedConditions = ruleForm.conditions.map((condition) => ({
+        field: condition.field,
+        patternType: condition.patternType,
+        value: condition.value.trim(),
+      }));
+      const primaryCondition = normalizedConditions[0];
       const payload = {
         name: ruleForm.name.trim(),
-        pattern: ruleForm.pattern.trim(),
-        patternType: ruleForm.patternType,
-        matchField: ruleForm.matchField,
+        pattern: primaryCondition.value,
+        patternType: primaryCondition.patternType,
+        matchField: primaryCondition.field,
+        conditionOperator: ruleForm.conditionOperator,
+        conditions: normalizedConditions,
         categoryId: Number(ruleForm.categoryId),
         priority: Number(ruleForm.priority) || 0,
         active: ruleForm.active,
@@ -142,6 +232,10 @@ export function CategoriesPage() {
       new Map<number, string>((categoriesFlatQuery.data ?? []).map((category) => [category.id, category.name])),
     [categoriesFlatQuery.data],
   );
+  const accountNameById = useMemo(
+    () => new Map<number, string>((accountsQuery.data ?? []).map((account) => [account.id, account.name])),
+    [accountsQuery.data],
+  );
 
   const loadCategoryForEdit = (id: number) => {
     const target = allCategories.find((item) => item.id === id);
@@ -170,17 +264,89 @@ export function CategoriesPage() {
       return;
     }
 
+    const conditions = effectiveRuleConditions(target);
+
     setRuleForm({
       id: target.id,
       name: target.name,
-      pattern: target.pattern,
-      patternType: target.patternType,
-      matchField: target.matchField,
+      conditionOperator: target.conditionOperator ?? 'AND',
+      conditions: conditions.map((condition) => ({
+        field: condition.field,
+        patternType: condition.patternType,
+        value: condition.value,
+      })),
       categoryId: String(target.categoryId),
       priority: String(target.priority),
       active: target.active,
     });
   };
+
+  const setRuleConditionField = (index: number, field: RuleMatchField) => {
+    setRuleForm((prev) => {
+      const nextConditions = prev.conditions.map((condition, conditionIndex) => {
+        if (conditionIndex !== index) {
+          return condition;
+        }
+
+        return {
+          ...condition,
+          field,
+          patternType: defaultPatternTypeForField(field),
+          value: '',
+        };
+      });
+
+      return { ...prev, conditions: nextConditions };
+    });
+  };
+
+  const setRuleConditionPatternType = (index: number, patternType: RulePatternType) => {
+    setRuleForm((prev) => ({
+      ...prev,
+      conditions: prev.conditions.map((condition, conditionIndex) =>
+        conditionIndex === index ? { ...condition, patternType } : condition,
+      ),
+    }));
+  };
+
+  const setRuleConditionValue = (index: number, value: string) => {
+    setRuleForm((prev) => ({
+      ...prev,
+      conditions: prev.conditions.map((condition, conditionIndex) =>
+        conditionIndex === index ? { ...condition, value } : condition,
+      ),
+    }));
+  };
+
+  const addRuleCondition = () => {
+    setRuleForm((prev) => ({
+      ...prev,
+      conditions: [...prev.conditions, { field: 'DESCRIPTION', patternType: 'CONTAINS', value: '' }],
+    }));
+  };
+
+  const removeRuleCondition = (index: number) => {
+    setRuleForm((prev) => ({
+      ...prev,
+      conditions: prev.conditions.filter((_, conditionIndex) => conditionIndex !== index),
+    }));
+  };
+
+  const formatRuleCondition = (condition: CategorizationRuleConditionDto) => {
+    if (condition.field === 'ACCOUNT') {
+      const accountId = Number(condition.value);
+      const accountName = Number.isNaN(accountId) ? null : accountNameById.get(accountId);
+      return `${fieldLabelByValue[condition.field]} ${patternTypeLabelByValue[condition.patternType]} "${accountName ?? condition.value}"`;
+    }
+
+    return `${fieldLabelByValue[condition.field]} ${patternTypeLabelByValue[condition.patternType]} "${condition.value}"`;
+  };
+
+  const isRuleFormValid =
+    ruleForm.name.trim().length > 0 &&
+    ruleForm.categoryId.length > 0 &&
+    ruleForm.conditions.length > 0 &&
+    ruleForm.conditions.every((condition) => condition.value.trim().length > 0);
 
   const renderCategoryRuleDetails = (category: CategoryDto) => {
     const categoryRules = (rulesQuery.data ?? []).filter((rule) => rule.categoryId === category.id);
@@ -221,7 +387,9 @@ export function CategoriesPage() {
                   <div>
                     <strong>{rule.name}</strong>
                     <div className="subtle" style={{ marginTop: '0.2rem' }}>
-                      {rule.matchField} {rule.patternType} &quot;{rule.pattern}&quot;
+                      {effectiveRuleConditions(rule)
+                        .map((condition) => formatRuleCondition(condition))
+                        .join(` ${rule.conditionOperator ?? 'AND'} `)}
                     </div>
                   </div>
 
@@ -379,14 +547,6 @@ export function CategoriesPage() {
             onChange={(event) => setRuleForm((prev) => ({ ...prev, name: event.target.value }))}
           />
 
-          <Input
-            id="rule-pattern"
-            label="Match text"
-            value={ruleForm.pattern}
-            onChange={(event) => setRuleForm((prev) => ({ ...prev, pattern: event.target.value }))}
-            placeholder="Tim Hortons"
-          />
-
           <Select
             id="rule-category"
             label="Assign category"
@@ -402,34 +562,15 @@ export function CategoriesPage() {
           </Select>
 
           <Select
-            id="rule-match-field"
-            label="Match field"
-            value={ruleForm.matchField}
+            id="rule-condition-operator"
+            label="Filter join"
+            value={ruleForm.conditionOperator}
             onChange={(event) =>
-              setRuleForm((prev) => ({ ...prev, matchField: event.target.value as 'DESCRIPTION' | 'PAYEE' | 'MEMO' }))
+              setRuleForm((prev) => ({ ...prev, conditionOperator: event.target.value as RuleConditionOperator }))
             }
           >
-            <option value="DESCRIPTION">Description</option>
-            <option value="PAYEE">Payee</option>
-            <option value="MEMO">Memo</option>
-          </Select>
-
-          <Select
-            id="rule-pattern-type"
-            label="Pattern type"
-            value={ruleForm.patternType}
-            onChange={(event) =>
-              setRuleForm((prev) => ({
-                ...prev,
-                patternType: event.target.value as 'CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'EXACT' | 'REGEX',
-              }))
-            }
-          >
-            <option value="CONTAINS">Contains</option>
-            <option value="STARTS_WITH">Starts with</option>
-            <option value="ENDS_WITH">Ends with</option>
-            <option value="EXACT">Exact</option>
-            <option value="REGEX">Regex</option>
+            <option value="AND">All filters must match (AND)</option>
+            <option value="OR">Any filter can match (OR)</option>
           </Select>
 
           <Input
@@ -451,16 +592,96 @@ export function CategoriesPage() {
           </Select>
         </div>
 
+        <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
+          {ruleForm.conditions.map((condition, index) => {
+            const availablePatternTypes = allowedPatternTypes(condition.field);
+
+            return (
+              <div
+                key={`rule-condition-${index}`}
+                style={{
+                  display: 'grid',
+                  gap: '0.5rem',
+                  gridTemplateColumns: '1.25fr 1.25fr 2fr auto',
+                  alignItems: 'end',
+                }}
+              >
+                <Select
+                  id={`rule-condition-field-${index}`}
+                  label={index === 0 ? 'Field' : ''}
+                  value={condition.field}
+                  onChange={(event) => setRuleConditionField(index, event.target.value as RuleMatchField)}
+                >
+                  <option value="DESCRIPTION">Description</option>
+                  <option value="PAYEE">Payee</option>
+                  <option value="MEMO">Memo</option>
+                  <option value="ACCOUNT">Account</option>
+                  <option value="AMOUNT">Amount</option>
+                </Select>
+
+                <Select
+                  id={`rule-condition-pattern-type-${index}`}
+                  label={index === 0 ? 'Operator' : ''}
+                  value={condition.patternType}
+                  onChange={(event) => setRuleConditionPatternType(index, event.target.value as RulePatternType)}
+                >
+                  {availablePatternTypes.map((patternType) => (
+                    <option key={patternType} value={patternType}>
+                      {patternTypeLabelByValue[patternType]}
+                    </option>
+                  ))}
+                </Select>
+
+                {condition.field === 'ACCOUNT' ? (
+                  <Select
+                    id={`rule-condition-value-${index}`}
+                    label={index === 0 ? 'Value' : ''}
+                    value={condition.value}
+                    onChange={(event) => setRuleConditionValue(index, event.target.value)}
+                  >
+                    <option value="">Select account</option>
+                    {(accountsQuery.data ?? []).map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <Input
+                    id={`rule-condition-value-${index}`}
+                    label={index === 0 ? 'Value' : ''}
+                    type={condition.field === 'AMOUNT' ? 'number' : 'text'}
+                    step={condition.field === 'AMOUNT' ? '0.01' : undefined}
+                    value={condition.value}
+                    placeholder={condition.field === 'AMOUNT' ? '-250.00' : 'Match value'}
+                    onChange={(event) => setRuleConditionValue(index, event.target.value)}
+                  />
+                )}
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => removeRuleCondition(index)}
+                  disabled={ruleForm.conditions.length <= 1}
+                >
+                  Remove
+                </Button>
+              </div>
+            );
+          })}
+
+          <div>
+            <Button type="button" variant="ghost" onClick={addRuleCondition}>
+              Add filter
+            </Button>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
           <Button
             type="button"
             onClick={() => saveRuleMutation.mutate()}
-            disabled={
-              saveRuleMutation.isPending ||
-              !ruleForm.name.trim() ||
-              !ruleForm.pattern.trim() ||
-              !ruleForm.categoryId
-            }
+            disabled={saveRuleMutation.isPending || !isRuleFormValid}
           >
             {ruleForm.id ? 'Update rule' : 'Create rule'}
           </Button>
@@ -490,7 +711,9 @@ export function CategoriesPage() {
                   <div>
                     <strong>{rule.name}</strong>
                     <div className="subtle" style={{ marginTop: '0.2rem' }}>
-                      {rule.matchField} {rule.patternType} &quot;{rule.pattern}&quot; →{' '}
+                      {effectiveRuleConditions(rule)
+                        .map((condition) => formatRuleCondition(condition))
+                        .join(` ${rule.conditionOperator ?? 'AND'} `)} →{' '}
                       {categoryNameById.get(rule.categoryId) ?? `Category #${rule.categoryId}`}
                     </div>
                   </div>
@@ -509,7 +732,7 @@ export function CategoriesPage() {
           ) : (
             <EmptyState
               title="No auto-categorization rules"
-              description="Add a match rule like 'Tim Hortons' and assign a category for incoming transactions."
+              description="Add one or more filters and assign a category for incoming transactions."
             />
           )}
         </div>

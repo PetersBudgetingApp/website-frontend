@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import { categorizationRuleSchema, categorySchema, transactionSchema } from '@domain/schemas';
+import {
+  categorizationRuleConditionSchema,
+  categorizationRuleSchema,
+  categorySchema,
+  ruleConditionOperatorSchema,
+  ruleMatchFieldSchema,
+  rulePatternTypeSchema,
+  transactionSchema,
+} from '@domain/schemas';
 import { apiClient } from '@shared/api/client';
 
 const categoriesSchema = z.array(categorySchema);
@@ -8,6 +16,10 @@ const categorizationRuleTransactionsSchema = z.array(transactionSchema);
 
 export type CategoryDto = z.infer<typeof categorySchema>;
 export type CategorizationRuleDto = z.infer<typeof categorizationRuleSchema>;
+export type CategorizationRuleConditionDto = z.infer<typeof categorizationRuleConditionSchema>;
+export type RulePatternType = z.infer<typeof rulePatternTypeSchema>;
+export type RuleMatchField = z.infer<typeof ruleMatchFieldSchema>;
+export type RuleConditionOperator = z.infer<typeof ruleConditionOperatorSchema>;
 
 export interface CategoryUpsertRequest {
   parentId: number | null;
@@ -19,9 +31,11 @@ export interface CategoryUpsertRequest {
 
 export interface CategorizationRuleUpsertRequest {
   name: string;
-  pattern: string;
-  patternType: 'CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'EXACT' | 'REGEX';
-  matchField: 'DESCRIPTION' | 'PAYEE' | 'MEMO';
+  pattern?: string;
+  patternType?: RulePatternType;
+  matchField?: RuleMatchField;
+  conditionOperator?: RuleConditionOperator;
+  conditions?: CategorizationRuleConditionDto[];
   categoryId: number;
   priority: number;
   active: boolean;

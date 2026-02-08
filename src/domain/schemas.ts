@@ -66,12 +66,37 @@ export const categorySchema: z.ZodType<CategoryNode> = z.lazy(() =>
   }),
 );
 
+export const rulePatternTypeSchema = z.enum([
+  'CONTAINS',
+  'STARTS_WITH',
+  'ENDS_WITH',
+  'EXACT',
+  'REGEX',
+  'EQUALS',
+  'GREATER_THAN',
+  'GREATER_THAN_OR_EQUAL',
+  'LESS_THAN',
+  'LESS_THAN_OR_EQUAL',
+]);
+
+export const ruleMatchFieldSchema = z.enum(['DESCRIPTION', 'PAYEE', 'MEMO', 'ACCOUNT', 'AMOUNT']);
+
+export const ruleConditionOperatorSchema = z.enum(['AND', 'OR']);
+
+export const categorizationRuleConditionSchema = z.object({
+  field: ruleMatchFieldSchema,
+  patternType: rulePatternTypeSchema,
+  value: z.string(),
+});
+
 export const categorizationRuleSchema = z.object({
   id: z.number(),
   name: z.string(),
   pattern: z.string(),
-  patternType: z.enum(['CONTAINS', 'STARTS_WITH', 'ENDS_WITH', 'EXACT', 'REGEX']),
-  matchField: z.enum(['DESCRIPTION', 'PAYEE', 'MEMO']),
+  patternType: rulePatternTypeSchema,
+  matchField: ruleMatchFieldSchema,
+  conditionOperator: ruleConditionOperatorSchema.default('AND'),
+  conditions: z.array(categorizationRuleConditionSchema).default([]),
   categoryId: z.number(),
   priority: z.number(),
   active: z.boolean(),
