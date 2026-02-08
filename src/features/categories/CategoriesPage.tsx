@@ -259,6 +259,11 @@ export function CategoriesPage() {
   };
 
   const loadRuleForEdit = (id: number) => {
+    if (ruleForm.id === id) {
+      setRuleForm(emptyRuleForm);
+      return;
+    }
+
     const target = (rulesQuery.data ?? []).find((item) => item.id === id);
     if (!target) {
       return;
@@ -347,6 +352,167 @@ export function CategoriesPage() {
     ruleForm.categoryId.length > 0 &&
     ruleForm.conditions.length > 0 &&
     ruleForm.conditions.every((condition) => condition.value.trim().length > 0);
+
+  const renderRuleFormEditor = ({
+    idPrefix,
+    submitLabel,
+    onCancel,
+  }: {
+    idPrefix: string;
+    submitLabel: string;
+    onCancel?: () => void;
+  }) => (
+    <>
+      <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <Input
+          id={`${idPrefix}-name`}
+          label="Rule name"
+          value={ruleForm.name}
+          onChange={(event) => setRuleForm((prev) => ({ ...prev, name: event.target.value }))}
+        />
+
+        <Select
+          id={`${idPrefix}-category`}
+          label="Assign category"
+          value={ruleForm.categoryId}
+          onChange={(event) => setRuleForm((prev) => ({ ...prev, categoryId: event.target.value }))}
+        >
+          <option value="">Select category</option>
+          {allCategories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          id={`${idPrefix}-condition-operator`}
+          label="Filter join"
+          value={ruleForm.conditionOperator}
+          onChange={(event) =>
+            setRuleForm((prev) => ({ ...prev, conditionOperator: event.target.value as RuleConditionOperator }))
+          }
+        >
+          <option value="AND">All filters must match (AND)</option>
+          <option value="OR">Any filter can match (OR)</option>
+        </Select>
+
+        <Input
+          id={`${idPrefix}-priority`}
+          label="Priority"
+          type="number"
+          value={ruleForm.priority}
+          onChange={(event) => setRuleForm((prev) => ({ ...prev, priority: event.target.value }))}
+        />
+
+        <Select
+          id={`${idPrefix}-active`}
+          label="Status"
+          value={ruleForm.active ? 'active' : 'inactive'}
+          onChange={(event) => setRuleForm((prev) => ({ ...prev, active: event.target.value === 'active' }))}
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </Select>
+      </div>
+
+      <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
+        {ruleForm.conditions.map((condition, index) => {
+          const availablePatternTypes = allowedPatternTypes(condition.field);
+
+          return (
+            <div
+              key={`${idPrefix}-condition-${index}`}
+              style={{
+                display: 'grid',
+                gap: '0.5rem',
+                gridTemplateColumns: '1.25fr 1.25fr 2fr auto',
+                alignItems: 'end',
+              }}
+            >
+              <Select
+                id={`${idPrefix}-condition-field-${index}`}
+                label={index === 0 ? 'Field' : ''}
+                value={condition.field}
+                onChange={(event) => setRuleConditionField(index, event.target.value as RuleMatchField)}
+              >
+                <option value="DESCRIPTION">Description</option>
+                <option value="PAYEE">Payee</option>
+                <option value="MEMO">Memo</option>
+                <option value="ACCOUNT">Account</option>
+                <option value="AMOUNT">Amount</option>
+              </Select>
+
+              <Select
+                id={`${idPrefix}-condition-pattern-type-${index}`}
+                label={index === 0 ? 'Operator' : ''}
+                value={condition.patternType}
+                onChange={(event) => setRuleConditionPatternType(index, event.target.value as RulePatternType)}
+              >
+                {availablePatternTypes.map((patternType) => (
+                  <option key={patternType} value={patternType}>
+                    {patternTypeLabelByValue[patternType]}
+                  </option>
+                ))}
+              </Select>
+
+              {condition.field === 'ACCOUNT' ? (
+                <Select
+                  id={`${idPrefix}-condition-value-${index}`}
+                  label={index === 0 ? 'Value' : ''}
+                  value={condition.value}
+                  onChange={(event) => setRuleConditionValue(index, event.target.value)}
+                >
+                  <option value="">Select account</option>
+                  {(accountsQuery.data ?? []).map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  id={`${idPrefix}-condition-value-${index}`}
+                  label={index === 0 ? 'Value' : ''}
+                  type={condition.field === 'AMOUNT' ? 'number' : 'text'}
+                  step={condition.field === 'AMOUNT' ? '0.01' : undefined}
+                  value={condition.value}
+                  placeholder={condition.field === 'AMOUNT' ? '-250.00' : 'Match value'}
+                  onChange={(event) => setRuleConditionValue(index, event.target.value)}
+                />
+              )}
+
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => removeRuleCondition(index)}
+                disabled={ruleForm.conditions.length <= 1}
+              >
+                Remove
+              </Button>
+            </div>
+          );
+        })}
+
+        <div>
+          <Button type="button" variant="ghost" onClick={addRuleCondition}>
+            Add filter
+          </Button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+        <Button type="button" onClick={() => saveRuleMutation.mutate()} disabled={saveRuleMutation.isPending || !isRuleFormValid}>
+          {submitLabel}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
+    </>
+  );
 
   const renderCategoryRuleDetails = (category: CategoryDto) => {
     const categoryRules = (rulesQuery.data ?? []).filter((rule) => rule.categoryId === category.id);
@@ -538,159 +704,21 @@ export function CategoriesPage() {
         )}
       </Card>
 
-      <Card title={ruleForm.id ? 'Edit Auto-Categorization Rule' : 'Auto-Categorization Rules'}>
-        <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-          <Input
-            id="rule-name"
-            label="Rule name"
-            value={ruleForm.name}
-            onChange={(event) => setRuleForm((prev) => ({ ...prev, name: event.target.value }))}
-          />
-
-          <Select
-            id="rule-category"
-            label="Assign category"
-            value={ruleForm.categoryId}
-            onChange={(event) => setRuleForm((prev) => ({ ...prev, categoryId: event.target.value }))}
+      <Card title="Auto-Categorization Rules">
+        {ruleForm.id ? (
+          <div
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.25rem' }}
           >
-            <option value="">Select category</option>
-            {allCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
-
-          <Select
-            id="rule-condition-operator"
-            label="Filter join"
-            value={ruleForm.conditionOperator}
-            onChange={(event) =>
-              setRuleForm((prev) => ({ ...prev, conditionOperator: event.target.value as RuleConditionOperator }))
-            }
-          >
-            <option value="AND">All filters must match (AND)</option>
-            <option value="OR">Any filter can match (OR)</option>
-          </Select>
-
-          <Input
-            id="rule-priority"
-            label="Priority"
-            type="number"
-            value={ruleForm.priority}
-            onChange={(event) => setRuleForm((prev) => ({ ...prev, priority: event.target.value }))}
-          />
-
-          <Select
-            id="rule-active"
-            label="Status"
-            value={ruleForm.active ? 'active' : 'inactive'}
-            onChange={(event) => setRuleForm((prev) => ({ ...prev, active: event.target.value === 'active' }))}
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </Select>
-        </div>
-
-        <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
-          {ruleForm.conditions.map((condition, index) => {
-            const availablePatternTypes = allowedPatternTypes(condition.field);
-
-            return (
-              <div
-                key={`rule-condition-${index}`}
-                style={{
-                  display: 'grid',
-                  gap: '0.5rem',
-                  gridTemplateColumns: '1.25fr 1.25fr 2fr auto',
-                  alignItems: 'end',
-                }}
-              >
-                <Select
-                  id={`rule-condition-field-${index}`}
-                  label={index === 0 ? 'Field' : ''}
-                  value={condition.field}
-                  onChange={(event) => setRuleConditionField(index, event.target.value as RuleMatchField)}
-                >
-                  <option value="DESCRIPTION">Description</option>
-                  <option value="PAYEE">Payee</option>
-                  <option value="MEMO">Memo</option>
-                  <option value="ACCOUNT">Account</option>
-                  <option value="AMOUNT">Amount</option>
-                </Select>
-
-                <Select
-                  id={`rule-condition-pattern-type-${index}`}
-                  label={index === 0 ? 'Operator' : ''}
-                  value={condition.patternType}
-                  onChange={(event) => setRuleConditionPatternType(index, event.target.value as RulePatternType)}
-                >
-                  {availablePatternTypes.map((patternType) => (
-                    <option key={patternType} value={patternType}>
-                      {patternTypeLabelByValue[patternType]}
-                    </option>
-                  ))}
-                </Select>
-
-                {condition.field === 'ACCOUNT' ? (
-                  <Select
-                    id={`rule-condition-value-${index}`}
-                    label={index === 0 ? 'Value' : ''}
-                    value={condition.value}
-                    onChange={(event) => setRuleConditionValue(index, event.target.value)}
-                  >
-                    <option value="">Select account</option>
-                    {(accountsQuery.data ?? []).map((account) => (
-                      <option key={account.id} value={account.id}>
-                        {account.name}
-                      </option>
-                    ))}
-                  </Select>
-                ) : (
-                  <Input
-                    id={`rule-condition-value-${index}`}
-                    label={index === 0 ? 'Value' : ''}
-                    type={condition.field === 'AMOUNT' ? 'number' : 'text'}
-                    step={condition.field === 'AMOUNT' ? '0.01' : undefined}
-                    value={condition.value}
-                    placeholder={condition.field === 'AMOUNT' ? '-250.00' : 'Match value'}
-                    onChange={(event) => setRuleConditionValue(index, event.target.value)}
-                  />
-                )}
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => removeRuleCondition(index)}
-                  disabled={ruleForm.conditions.length <= 1}
-                >
-                  Remove
-                </Button>
-              </div>
-            );
-          })}
-
-          <div>
-            <Button type="button" variant="ghost" onClick={addRuleCondition}>
-              Add filter
+            <p className="subtle" style={{ margin: 0 }}>
+              Editing a rule inline below.
+            </p>
+            <Button type="button" variant="secondary" onClick={() => setRuleForm(emptyRuleForm)}>
+              Cancel edit
             </Button>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-          <Button
-            type="button"
-            onClick={() => saveRuleMutation.mutate()}
-            disabled={saveRuleMutation.isPending || !isRuleFormValid}
-          >
-            {ruleForm.id ? 'Update rule' : 'Create rule'}
-          </Button>
-          {ruleForm.id && (
-            <Button type="button" variant="secondary" onClick={() => setRuleForm(emptyRuleForm)}>
-              Cancel
-            </Button>
-          )}
-        </div>
+        ) : (
+          renderRuleFormEditor({ idPrefix: 'create-rule', submitLabel: 'Create rule' })
+        )}
 
         <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
           {(rulesQuery.data ?? []).length > 0 ? (
@@ -699,33 +727,44 @@ export function CategoriesPage() {
                 <div
                   key={rule.id}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '1rem',
                     border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
                     padding: '0.65rem 0.75rem',
+                    display: 'grid',
+                    gap: '0.75rem',
                   }}
                 >
-                  <div>
-                    <strong>{rule.name}</strong>
-                    <div className="subtle" style={{ marginTop: '0.2rem' }}>
-                      {effectiveRuleConditions(rule)
-                        .map((condition) => formatRuleCondition(condition))
-                        .join(` ${rule.conditionOperator ?? 'AND'} `)} →{' '}
-                      {categoryNameById.get(rule.categoryId) ?? `Category #${rule.categoryId}`}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                    <div>
+                      <strong>{rule.name}</strong>
+                      <div className="subtle" style={{ marginTop: '0.2rem' }}>
+                        {effectiveRuleConditions(rule)
+                          .map((condition) => formatRuleCondition(condition))
+                          .join(` ${rule.conditionOperator ?? 'AND'} `)} →{' '}
+                        {categoryNameById.get(rule.categoryId) ?? `Category #${rule.categoryId}`}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <Button type="button" variant="ghost" onClick={() => loadRuleForEdit(rule.id)}>
+                        {ruleForm.id === rule.id ? 'Close editor' : 'Edit'}
+                      </Button>
+                      <Button type="button" variant="danger" onClick={() => deleteRuleMutation.mutate(rule.id)}>
+                        Delete
+                      </Button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <Button type="button" variant="ghost" onClick={() => loadRuleForEdit(rule.id)}>
-                      Edit
-                    </Button>
-                    <Button type="button" variant="danger" onClick={() => deleteRuleMutation.mutate(rule.id)}>
-                      Delete
-                    </Button>
-                  </div>
+                  {ruleForm.id === rule.id && (
+                    <div style={{ marginTop: '0.1rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                      <strong style={{ display: 'block', marginBottom: '0.75rem' }}>Edit Rule</strong>
+                      {renderRuleFormEditor({
+                        idPrefix: `edit-rule-${rule.id}`,
+                        submitLabel: 'Update rule',
+                        onCancel: () => setRuleForm(emptyRuleForm),
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
