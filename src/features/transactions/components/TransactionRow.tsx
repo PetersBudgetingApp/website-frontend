@@ -91,19 +91,22 @@ export function TransactionRow({
   };
 
   return (
-    <article className="transaction-entry" role="listitem" aria-label={`Transaction ${transaction.id}`}>
-      <div className="number transaction-entry-id">{transaction.id}</div>
+    <article className="transaction-entry" role="listitem" aria-label={`Transaction ${transaction.id}: ${description}`}>
+      <div className="transaction-entry-title">
+        <p className="subtle">Description</p>
+        <p>{description}</p>
+        {transaction.internalTransfer && <Badge>Transfer</Badge>}
+      </div>
 
       <div className="transaction-entry-main">
-        <div className="transaction-entry-line transaction-entry-line-secondary">
+        <div className="transaction-entry-line">
           <div className="transaction-entry-field transaction-entry-date">
             <p className="subtle">Date</p>
             <p>{formatDate(transaction.postedAt)}</p>
           </div>
-          <div className="transaction-entry-field transaction-entry-description">
-            <p className="subtle">Description</p>
-            <p>{description}</p>
-            {transaction.internalTransfer && <Badge>Transfer</Badge>}
+          <div className="transaction-entry-field transaction-entry-transaction-id">
+            <p className="subtle">ID</p>
+            <p className="number">{transaction.id}</p>
           </div>
           <div className="transaction-entry-field transaction-entry-amount">
             <p className="subtle">Amount</p>

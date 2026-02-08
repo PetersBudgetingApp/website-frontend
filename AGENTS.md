@@ -213,13 +213,14 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - unlink transfer pair
 - Unified Transactions row UX:
   - each transaction renders as a two-line grouped row:
-    - top line: `Date`, `Description`, `Amount`
+    - top line: `Date`, `ID`, `Amount`
     - bottom line: `Account`, `Category`, `Notes`
-  - parent row shows ID on the left and a centered 3-dot actions menu on the right
+  - parent row shows `Description` on the left and a centered 3-dot actions menu on the right
   - row-level actions are in that menu (`Notes`, `Exclude from totals`, `Add Rule`, `Mark Transfer`)
   - notes are edited in the menu and autosave (no explicit Save button)
-  - desktop/vertical-monitor widths keep the two 3-field grouped lines
-  - mid-range widths (`561px` to `760px`) switch to stacked field areas (`date/amount`, then description, account, category, notes)
+  - desktop/vertical-monitor widths keep the title/main/action split; the title is width-capped and wraps
+  - laptop/tablet widths (`<=1080px`) switch to stacked card rows (`title + actions`, then `main`) to prevent cramped fields
+  - mid-range widths (`561px` to `760px`) switch to stacked field areas (`date/id/amount`, then account/category/notes)
   - mobile layout collapses grouped lines to single-column fields without page-level horizontal scrolling
 - Transfer Pairs card UX:
   - each transfer pair renders as the same two-line grouped row pattern with left-side IDs and right-side action area
