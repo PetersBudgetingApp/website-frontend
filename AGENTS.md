@@ -171,6 +171,10 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - cashflow by current month range
   - spending by current month range
   - flat categories
+- Net worth card behavior:
+  - shows three account sections: `Bank Accounts`, `Investments`, `Liabilities`
+  - groups rows by institution within each section
+  - section placement is driven by account `netWorthCategory` from backend
 - Query keys:
   - `accounts.summary`
   - `analytics.cashFlow(startDate,endDate)`
@@ -251,7 +255,11 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Reads:
   - account detail by id
   - transactions filtered by account id
-- No mutations (read-only view)
+- Mutations:
+  - update account net worth category (`PATCH /accounts/{id}/net-worth-category`)
+- Invalidation/update behavior on save:
+  - updates `accounts.detail(id)` cache directly
+  - invalidates `accounts.summary` and `accounts.all`
 - Navigated to from Dashboard net worth breakdown account links
 
 ## API Layer Contract Rules

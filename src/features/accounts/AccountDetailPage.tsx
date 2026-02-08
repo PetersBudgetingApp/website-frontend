@@ -1,25 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@shared/query/keys';
-import { getAccount } from '@shared/api/endpoints/accounts';
+import { getAccount, updateAccountNetWorthCategory } from '@shared/api/endpoints/accounts';
 import { getTransactions } from '@shared/api/endpoints/transactions';
 import { Card } from '@shared/ui/Card';
 import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
 import { EmptyState } from '@shared/ui/EmptyState';
+import { Select } from '@shared/ui/Select';
 import { Spinner } from '@shared/ui/Spinner';
 import { formatCurrency, formatDate } from '@domain/format';
-import type { TransactionFilters } from '@domain/types';
+import type { NetWorthCategory, TransactionFilters } from '@domain/types';
 import { appRoutes } from '@app/routes';
 
 const PAGE_SIZE = 20;
 
+const NET_WORTH_CATEGORY_LABELS: Record<NetWorthCategory, string> = {
+  BANK_ACCOUNT: 'Bank Accounts',
+  INVESTMENT: 'Investments',
+  LIABILITY: 'Liabilities',
+};
+
 export function AccountDetailPage() {
   const { id } = useParams<{ id: string }>();
   const accountId = Number(id);
+  const queryClient = useQueryClient();
 
   const [offset, setOffset] = useState(0);
+  const [selectedNetWorthCategory, setSelectedNetWorthCategory] = useState<NetWorthCategory | ''>('');
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const accountQuery = useQuery({
     queryKey: queryKeys.accounts.detail(accountId),
@@ -38,6 +48,26 @@ export function AccountDetailPage() {
     queryKey: queryKeys.transactions.list(filters),
     queryFn: () => getTransactions(filters),
     enabled: !Number.isNaN(accountId),
+  });
+
+  useEffect(() => {
+    if (accountQuery.data?.netWorthCategory) {
+      setSelectedNetWorthCategory(accountQuery.data.netWorthCategory);
+    }
+  }, [accountQuery.data?.netWorthCategory]);
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: (netWorthCategory: NetWorthCategory) => updateAccountNetWorthCategory(accountId, netWorthCategory),
+    onSuccess: (updatedAccount) => {
+      queryClient.setQueryData(queryKeys.accounts.detail(accountId), updatedAccount);
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.summary() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
+      setSelectedNetWorthCategory(updatedAccount.netWorthCategory);
+      setSaveMessage(`Saved as ${NET_WORTH_CATEGORY_LABELS[updatedAccount.netWorthCategory]}.`);
+    },
+    onError: () => {
+      setSaveMessage('Could not save account category. Please try again.');
+    },
   });
 
   if (Number.isNaN(accountId)) {
@@ -68,6 +98,8 @@ export function AccountDetailPage() {
   }
 
   const account = accountQuery.data;
+  const activeNetWorthCategory = selectedNetWorthCategory === '' ? account.netWorthCategory : selectedNetWorthCategory;
+  const canSaveCategory = activeNetWorthCategory !== account.netWorthCategory;
 
   return (
     <section className="page">
@@ -85,6 +117,35 @@ export function AccountDetailPage() {
           <div>
             <p className="subtle">Account Type</p>
             <p><Badge>{account.accountType}</Badge></p>
+          </div>
+          <div>
+            <Select
+              id="net-worth-category"
+              label="Net Worth Category"
+              value={activeNetWorthCategory}
+              onChange={(event) => {
+                setSelectedNetWorthCategory(event.target.value as NetWorthCategory);
+                setSaveMessage(null);
+              }}
+            >
+              <option value="BANK_ACCOUNT">{NET_WORTH_CATEGORY_LABELS.BANK_ACCOUNT}</option>
+              <option value="INVESTMENT">{NET_WORTH_CATEGORY_LABELS.INVESTMENT}</option>
+              <option value="LIABILITY">{NET_WORTH_CATEGORY_LABELS.LIABILITY}</option>
+            </Select>
+            <div style={{ marginTop: '0.45rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <Button
+                variant="secondary"
+                disabled={!canSaveCategory || updateCategoryMutation.isPending}
+                onClick={() => {
+                  updateCategoryMutation.mutate(activeNetWorthCategory);
+                }}
+              >
+                {updateCategoryMutation.isPending ? 'Saving...' : 'Save Category'}
+              </Button>
+              {saveMessage && (
+                <p className={updateCategoryMutation.isError ? 'field-error' : 'subtle'}>{saveMessage}</p>
+              )}
+            </div>
           </div>
           <div>
             <p className="subtle">Currency</p>

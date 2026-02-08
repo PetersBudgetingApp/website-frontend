@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { NetWorthCategory } from '@domain/types';
 import { accountSchema, accountSummarySchema } from '@domain/schemas';
 import { apiClient } from '@shared/api/client';
 
@@ -22,5 +23,13 @@ export async function getAccount(id: number) {
 export async function getAccountSummary() {
   return apiClient.request('accounts/summary', {
     schema: accountSummarySchema,
+  });
+}
+
+export async function updateAccountNetWorthCategory(id: number, netWorthCategory: NetWorthCategory) {
+  return apiClient.request(`accounts/${id}/net-worth-category`, {
+    method: 'PATCH',
+    body: { netWorthCategory },
+    schema: accountSchema,
   });
 }

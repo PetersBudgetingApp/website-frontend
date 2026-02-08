@@ -38,6 +38,7 @@ export const accountSchema = z.object({
   name: z.string(),
   institutionName: z.string().nullable().optional(),
   accountType: z.enum(['CHECKING', 'SAVINGS', 'CREDIT_CARD', 'LOAN', 'INVESTMENT', 'OTHER']),
+  netWorthCategory: z.enum(['BANK_ACCOUNT', 'INVESTMENT', 'LIABILITY']),
   currency: z.string(),
   currentBalance: z.number(),
   availableBalance: z.number().nullable().optional(),

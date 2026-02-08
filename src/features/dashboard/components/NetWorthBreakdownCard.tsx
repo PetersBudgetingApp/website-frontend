@@ -8,7 +8,7 @@ interface NetWorthBreakdownCardProps {
   summary: AccountSummaryDto;
 }
 
-type BreakdownType = 'asset' | 'liability';
+type BreakdownType = 'bank' | 'investment' | 'liability';
 
 interface BreakdownItem {
   id: number;
@@ -23,19 +23,22 @@ interface InstitutionGroup {
   accounts: BreakdownItem[];
 }
 
-const assetTypes = new Set(['CHECKING', 'SAVINGS', 'INVESTMENT']);
-const liabilityTypes = new Set(['CREDIT_CARD', 'LOAN']);
+interface BreakdownSection {
+  key: BreakdownType;
+  title: string;
+  emptyMessage: string;
+  groups: InstitutionGroup[];
+  total: number;
+}
 
-function classifyBreakdownType(accountType: string, currentBalance: number): BreakdownType {
-  if (liabilityTypes.has(accountType)) {
+function toBreakdownType(netWorthCategory: string): BreakdownType {
+  if (netWorthCategory === 'LIABILITY') {
     return 'liability';
   }
-
-  if (assetTypes.has(accountType)) {
-    return 'asset';
+  if (netWorthCategory === 'INVESTMENT') {
+    return 'investment';
   }
-
-  return currentBalance < 0 ? 'liability' : 'asset';
+  return 'bank';
 }
 
 function getInstitutionName(input?: string | null): string {
@@ -66,11 +69,12 @@ function groupByInstitution(accounts: BreakdownItem[]): InstitutionGroup[] {
 
 export function NetWorthBreakdownCard({ summary }: NetWorthBreakdownCardProps) {
   const breakdown = useMemo(() => {
-    const assets: BreakdownItem[] = [];
+    const bankAccounts: BreakdownItem[] = [];
+    const investments: BreakdownItem[] = [];
     const liabilities: BreakdownItem[] = [];
 
     summary.accounts.forEach((account) => {
-      const type = classifyBreakdownType(account.accountType, account.currentBalance);
+      const type = toBreakdownType(account.netWorthCategory);
       const amount = type === 'liability' ? Math.abs(account.currentBalance) : account.currentBalance;
 
       const item = {
@@ -80,17 +84,50 @@ export function NetWorthBreakdownCard({ summary }: NetWorthBreakdownCardProps) {
         amount,
       };
 
+      if (type === 'bank') {
+        bankAccounts.push(item);
+        return;
+      }
+
+      if (type === 'investment') {
+        investments.push(item);
+        return;
+      }
+
       if (type === 'liability') {
         liabilities.push(item);
-      } else {
-        assets.push(item);
       }
     });
 
-    return {
-      assetGroups: groupByInstitution(assets),
-      liabilityGroups: groupByInstitution(liabilities),
-    };
+    const bankGroups = groupByInstitution(bankAccounts);
+    const investmentGroups = groupByInstitution(investments);
+    const liabilityGroups = groupByInstitution(liabilities);
+
+    const sections: BreakdownSection[] = [
+      {
+        key: 'bank',
+        title: 'Bank Accounts',
+        emptyMessage: 'No bank accounts yet.',
+        groups: bankGroups,
+        total: bankAccounts.reduce((sum, account) => sum + account.amount, 0),
+      },
+      {
+        key: 'investment',
+        title: 'Investments',
+        emptyMessage: 'No investment accounts yet.',
+        groups: investmentGroups,
+        total: investments.reduce((sum, account) => sum + account.amount, 0),
+      },
+      {
+        key: 'liability',
+        title: 'Liabilities',
+        emptyMessage: 'No liability accounts.',
+        groups: liabilityGroups,
+        total: liabilities.reduce((sum, account) => sum + account.amount, 0),
+      },
+    ];
+
+    return { sections };
   }, [summary.accounts]);
 
   return (
@@ -101,67 +138,38 @@ export function NetWorthBreakdownCard({ summary }: NetWorthBreakdownCardProps) {
       </div>
 
       <div className="net-worth-breakdown-columns">
-        <section>
-          <div className="net-worth-breakdown-column-header">
-            <p className="subtle">Assets</p>
-            <p className="number">{formatCurrency(summary.totalAssets)}</p>
-          </div>
-          {breakdown.assetGroups.length === 0 ? (
-            <p className="subtle">No asset accounts yet.</p>
-          ) : (
-            <div className="net-worth-institution-groups">
-              {breakdown.assetGroups.map((group) => (
-                <article className="net-worth-institution-group" key={`asset-group-${group.institutionName}`}>
-                  <div className="net-worth-institution-header">
-                    <p className="net-worth-institution-name">{group.institutionName}</p>
-                    <p className="number">{formatCurrency(group.total)}</p>
-                  </div>
-                  <table className="table">
-                    <tbody>
-                      {group.accounts.map((item) => (
-                        <tr key={`asset-${item.id}`}>
-                          <td><Link to={`/accounts/${item.id}`}>{item.name}</Link></td>
-                          <td className="number">{formatCurrency(item.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </article>
-              ))}
+        {breakdown.sections.map((section) => (
+          <section key={section.key}>
+            <div className="net-worth-breakdown-column-header">
+              <p className="subtle">{section.title}</p>
+              <p className="number">{formatCurrency(section.total)}</p>
             </div>
-          )}
-        </section>
-
-        <section>
-          <div className="net-worth-breakdown-column-header">
-            <p className="subtle">Liabilities</p>
-            <p className="number">{formatCurrency(summary.totalLiabilities)}</p>
-          </div>
-          {breakdown.liabilityGroups.length === 0 ? (
-            <p className="subtle">No liability accounts.</p>
-          ) : (
-            <div className="net-worth-institution-groups">
-              {breakdown.liabilityGroups.map((group) => (
-                <article className="net-worth-institution-group" key={`liability-group-${group.institutionName}`}>
-                  <div className="net-worth-institution-header">
-                    <p className="net-worth-institution-name">{group.institutionName}</p>
-                    <p className="number">{formatCurrency(group.total)}</p>
-                  </div>
-                  <table className="table">
-                    <tbody>
-                      {group.accounts.map((item) => (
-                        <tr key={`liability-${item.id}`}>
-                          <td><Link to={`/accounts/${item.id}`}>{item.name}</Link></td>
-                          <td className="number">{formatCurrency(item.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+            {section.groups.length === 0 ? (
+              <p className="subtle">{section.emptyMessage}</p>
+            ) : (
+              <div className="net-worth-institution-groups">
+                {section.groups.map((group) => (
+                  <article className="net-worth-institution-group" key={`${section.key}-group-${group.institutionName}`}>
+                    <div className="net-worth-institution-header">
+                      <p className="net-worth-institution-name">{group.institutionName}</p>
+                      <p className="number">{formatCurrency(group.total)}</p>
+                    </div>
+                    <table className="table">
+                      <tbody>
+                        {group.accounts.map((item) => (
+                          <tr key={`${section.key}-${item.id}`}>
+                            <td><Link to={`/accounts/${item.id}`}>{item.name}</Link></td>
+                            <td className="number">{formatCurrency(item.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        ))}
       </div>
     </Card>
   );
