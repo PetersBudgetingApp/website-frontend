@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { TrendDto } from '@shared/api/endpoints/analytics';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
@@ -26,6 +26,13 @@ const axisValueFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   notation: 'compact',
   maximumFractionDigits: 1,
+});
+
+const tooltipValueFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 const monthLabelFormatter = new Intl.DateTimeFormat(undefined, {
@@ -57,6 +64,8 @@ function buildLinePath(points: Array<{ x: number; y: number }>): string {
 
 export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSpendingChartProps) {
   const [mode, setMode] = useState<ChartMode>('bar');
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   const chartData = useMemo(() => {
     let runningIncome = 0;
@@ -127,6 +136,51 @@ export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSp
     y: yForValue(point.cumulativeExpenses),
   }));
 
+  const getDataIndexFromMouse = useCallback(
+    (event: React.MouseEvent<SVGSVGElement>) => {
+      const svg = svgRef.current;
+      if (!svg || chartData.length === 0) return null;
+
+      const rect = svg.getBoundingClientRect();
+      const svgX = ((event.clientX - rect.left) / rect.width) * width;
+
+      if (mode === 'bar') {
+        const index = Math.floor((svgX - margins.left) / groupWidth);
+        if (index >= 0 && index < chartData.length) return index;
+      } else {
+        // For line chart, snap to nearest data point
+        let closest = 0;
+        let closestDist = Infinity;
+        for (let i = 0; i < chartData.length; i++) {
+          const dist = Math.abs(xForLineIndex(i) - svgX);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closest = i;
+          }
+        }
+        // Only show if reasonably close to the plot area
+        if (svgX >= margins.left - 10 && svgX <= margins.left + plotWidth + 10) {
+          return closest;
+        }
+      }
+      return null;
+    },
+    [chartData, mode, groupWidth, margins.left, plotWidth, width, xForLineIndex],
+  );
+
+  const handleMouseMove = useCallback(
+    (event: React.MouseEvent<SVGSVGElement>) => {
+      setHoveredIndex(getDataIndexFromMouse(event));
+    },
+    [getDataIndexFromMouse],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredIndex(null);
+  }, []);
+
+  const hoveredPoint = hoveredIndex !== null ? chartData[hoveredIndex] : null;
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -148,10 +202,13 @@ export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSp
       <div className="chart-content">
         <p className="subtle">{mode === 'bar' ? 'Monthly income and spending totals' : 'Cumulative income and spending totals'}</p>
         <svg
+          ref={svgRef}
           className="trend-chart"
           viewBox={`0 0 ${width} ${height}`}
           role="img"
           aria-label={mode === 'bar' ? 'Monthly income and spending bar chart' : 'Cumulative income and spending line chart'}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
         >
           {yTicks.map((tick) => {
             const y = yForValue(tick.value);
@@ -218,6 +275,65 @@ export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSp
                   })}
                 </>
               )}
+
+          {/* Hover crosshair + tooltip */}
+          {hoveredIndex !== null && hoveredPoint && (() => {
+            const crossX = mode === 'bar'
+              ? margins.left + groupWidth * (hoveredIndex + 0.5)
+              : xForLineIndex(hoveredIndex);
+
+            const incomeVal = mode === 'bar' ? hoveredPoint.income : hoveredPoint.cumulativeIncome;
+            const expenseVal = mode === 'bar' ? hoveredPoint.expenses : hoveredPoint.cumulativeExpenses;
+            const incomeY = yForValue(incomeVal);
+            const expenseY = yForValue(expenseVal);
+
+            const tooltipW = 175;
+            const tooltipH = 68;
+            const tooltipPad = 12;
+            // Position tooltip to the right of crosshair; flip to left if too close to right edge
+            const tooltipX = crossX + tooltipPad + tooltipW > width - margins.right
+              ? crossX - tooltipPad - tooltipW
+              : crossX + tooltipPad;
+            const tooltipY = Math.max(margins.top, Math.min(incomeY, expenseY) - tooltipH / 2);
+
+            return (
+              <g className="trend-hover-group" pointerEvents="none">
+                <line
+                  className="trend-crosshair"
+                  x1={crossX}
+                  y1={margins.top}
+                  x2={crossX}
+                  y2={plotBottom}
+                />
+
+                {/* Highlight dots on data points */}
+                <circle className="trend-hover-dot trend-hover-dot-income" cx={crossX} cy={incomeY} r={6} />
+                <circle className="trend-hover-dot trend-hover-dot-expense" cx={crossX} cy={expenseY} r={6} />
+
+                {/* Tooltip card */}
+                <rect
+                  className="trend-tooltip-bg"
+                  x={tooltipX}
+                  y={tooltipY}
+                  width={tooltipW}
+                  height={tooltipH}
+                  rx={8}
+                />
+                <text className="trend-tooltip-label" x={tooltipX + 12} y={tooltipY + 18}>
+                  {hoveredPoint.label}
+                </text>
+                <circle cx={tooltipX + 12} cy={tooltipY + 33} r={4} fill="#1676dd" />
+                <text className="trend-tooltip-value" x={tooltipX + 22} y={tooltipY + 37}>
+                  Income: {tooltipValueFormatter.format(incomeVal)}
+                </text>
+                <circle cx={tooltipX + 12} cy={tooltipY + 52} r={4} fill="#dc623d" />
+                <text className="trend-tooltip-value" x={tooltipX + 22} y={tooltipY + 56}>
+                  Spending: {tooltipValueFormatter.format(expenseVal)}
+                </text>
+              </g>
+            );
+          })()}
+
         </svg>
         <ul className="trend-legend" aria-label="Chart legend">
           <li className="trend-legend-item">
