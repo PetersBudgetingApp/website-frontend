@@ -14,6 +14,7 @@ interface TransactionRowProps {
   onNotesChange: (transactionId: number, notes: string) => void;
   onAddRule: (transaction: TransactionDto) => void;
   onMarkTransfer?: (transactionId: number, pairTransactionId: number) => void;
+  onDelete?: (transactionId: number) => void;
   disabled?: boolean;
 }
 
@@ -25,6 +26,7 @@ export function TransactionRow({
   onNotesChange,
   onAddRule,
   onMarkTransfer,
+  onDelete,
   disabled,
 }: TransactionRowProps) {
   const [notes, setNotes] = useState(transaction.notes ?? '');
@@ -235,6 +237,23 @@ export function TransactionRow({
                     </div>
                   )}
                 </>
+              )}
+              {onDelete && transaction.manualEntry && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  className="transaction-row-menu-item"
+                  onClick={() => {
+                    if (!window.confirm('Delete this manually created transaction?')) {
+                      return;
+                    }
+                    onDelete(transaction.id);
+                    closeMenu();
+                  }}
+                  disabled={disabled}
+                >
+                  Delete
+                </Button>
               )}
             </div>
           )}

@@ -22,6 +22,7 @@ describe('TransactionRow', () => {
           internalTransfer: false,
           excludeFromTotals: false,
           recurring: false,
+          manualEntry: true,
         }}
         categories={[{ id: 3, name: 'Food', categoryType: 'EXPENSE', system: false }]}
         onCategoryChange={() => undefined}
@@ -38,5 +39,44 @@ describe('TransactionRow', () => {
     await waitFor(() => {
       expect(onNotesChange).toHaveBeenLastCalledWith(1, 'morning purchase');
     });
+  });
+
+  it('shows delete for manual entries and triggers callback on confirm', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(
+      <TransactionRow
+        transaction={{
+          id: 11,
+          accountId: 2,
+          accountName: 'Checking',
+          postedAt: '2026-02-01T00:00:00Z',
+          amount: -10,
+          pending: false,
+          description: 'Coffee',
+          manuallyCategorized: false,
+          internalTransfer: false,
+          excludeFromTotals: false,
+          recurring: false,
+          manualEntry: true,
+        }}
+        categories={[{ id: 3, name: 'Food', categoryType: 'EXPENSE', system: false }]}
+        onCategoryChange={() => undefined}
+        onExcludeToggle={() => undefined}
+        onNotesChange={() => undefined}
+        onAddRule={() => undefined}
+        onDelete={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Transaction actions for 11' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Delete this manually created transaction?');
+    expect(onDelete).toHaveBeenCalledWith(11);
+
+    confirmSpy.mockRestore();
   });
 });

@@ -205,6 +205,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - transaction coverage summary
   - transfer pairs
 - Mutations:
+  - create manual transaction from Transactions page modal (`POST /transactions`)
+  - delete manual transaction from row actions (`DELETE /transactions/{id}`)
   - update transaction (category/notes/excludeFromTotals)
   - create categorization rule from selected transaction defaults
     - defaults now prefill 3 chained conditions: description + account + amount
@@ -217,6 +219,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
     - bottom line: `Account`, `Category`, `Notes`
   - parent row shows `Description` on the left and a centered 3-dot actions menu on the right
   - row-level actions are in that menu (`Notes`, `Exclude from totals`, `Add Rule`, `Mark Transfer`)
+  - manual-entry rows also expose `Delete` in the row actions menu with a confirmation prompt
   - notes are edited in the menu and autosave (no explicit Save button)
   - desktop/vertical-monitor widths keep the title/main/action split; the title is width-capped and wraps
   - laptop/tablet widths (`<=1080px`) switch to stacked card rows (`title + actions`, then `main`) to prevent cramped fields
@@ -231,6 +234,14 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Filters card UX:
   - filter inputs use a responsive grid (desktop 6 columns, medium 3 columns, tablet 2 columns, mobile 1 column)
   - transfer toggle spans full row on medium/tablet/mobile to avoid label/input compression
+- Manual entry modal UX:
+  - Unified Transactions card includes `Add transaction` button
+  - popup form captures account/date/amount/description plus optional payee/memo/category/notes/pending/exclude flags
+  - form supports escape/overlay close and shows API validation errors inline
+- Invalidation on create:
+  - `transactions.all`, `transactions.coverage`, `analytics.all`
+- Invalidation on delete:
+  - `transactions.all`, `transactions.coverage`, `transactions.transfers`, `analytics.all`
 - Invalidation on update:
   - `transactions.all`, `analytics.all`
 

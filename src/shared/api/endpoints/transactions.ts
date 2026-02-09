@@ -16,6 +16,20 @@ export interface UpdateTransactionRequest {
   excludeFromTotals?: boolean;
 }
 
+export interface CreateTransactionRequest {
+  accountId: number;
+  postedDate: string;
+  transactedDate?: string;
+  amount: number;
+  description: string;
+  payee?: string;
+  memo?: string;
+  categoryId?: number;
+  pending?: boolean;
+  excludeFromTotals?: boolean;
+  notes?: string;
+}
+
 export async function getTransactions(filters: TransactionFilters) {
   return apiClient.request('transactions', {
     method: 'GET',
@@ -41,11 +55,25 @@ export async function getTransactionCoverage() {
   });
 }
 
+export async function createTransaction(request: CreateTransactionRequest) {
+  return apiClient.request('transactions', {
+    method: 'POST',
+    body: request,
+    schema: transactionSchema,
+  });
+}
+
 export async function updateTransaction(id: number, request: UpdateTransactionRequest) {
   return apiClient.request(`transactions/${id}`, {
     method: 'PATCH',
     body: request,
     schema: transactionSchema,
+  });
+}
+
+export async function deleteTransaction(id: number) {
+  return apiClient.request(`transactions/${id}`, {
+    method: 'DELETE',
   });
 }
 

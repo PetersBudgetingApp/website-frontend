@@ -15,7 +15,7 @@ function getPageTitle(pathname: string): string {
     return 'Account Details';
   }
 
-  return 'LedgerFlow';
+  return 'Velum';
 }
 
 export function AppShell() {
@@ -68,7 +68,7 @@ export function AppShell() {
     <div className="app-shell">
       <aside className="app-sidebar">
         <div className="brand">
-          <h1>LedgerFlow</h1>
+          <h1>Velum</h1>
           <p>Personal budgeting</p>
         </div>
         <nav className="nav-links" aria-label="Primary">

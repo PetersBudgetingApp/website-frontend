@@ -315,6 +315,59 @@ textarea {
   flex: 0 0 auto;
 }
 
+.transactions-card-actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.transactions-card-page-size {
+  width: 180px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 24, 41, 0.35);
+}
+
+.modal-shell {
+  width: min(860px, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}
+
+.manual-transaction-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.manual-transaction-form-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.manual-transaction-checkbox {
+  align-self: end;
+}
+
+.manual-transaction-notes {
+  min-height: 100px;
+}
+
+.manual-transaction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .badge {
   display: inline-flex;
   border-radius: 999px;
@@ -820,6 +873,10 @@ textarea {
   .transactions-filters-transfers {
     grid-column: 1 / -1;
   }
+
+  .manual-transaction-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -1066,6 +1123,19 @@ textarea {
   .transactions-filters-transfers {
     grid-column: 1 / -1;
   }
+
+  .transactions-card-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .transactions-card-actions .btn {
+    width: 100%;
+  }
+
+  .transactions-card-page-size {
+    width: 100%;
+  }
 }
 
 @media (max-width: 760px) and (min-width: 561px) {
@@ -1197,6 +1267,10 @@ textarea {
 
   .transactions-filters-transfers {
     grid-column: auto;
+  }
+
+  .manual-transaction-form-grid {
+    grid-template-columns: 1fr;
   }
 }
 

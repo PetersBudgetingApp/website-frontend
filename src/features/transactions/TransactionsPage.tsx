@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
 import { formatDate } from '@domain/format';
@@ -11,6 +11,8 @@ import {
   type RulePatternType,
 } from '@shared/api/endpoints/categories';
 import {
+  createTransaction,
+  deleteTransaction,
   getTransactionCoverage,
   getTransactions,
   getTransfers,
@@ -19,6 +21,7 @@ import {
   updateTransaction,
   type TransactionDto,
 } from '@shared/api/endpoints/transactions';
+import { ApiClientError } from '@shared/api/httpClient';
 import type { TransactionFilters } from '@domain/types';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
@@ -74,12 +77,37 @@ function allowedPatternTypes(field: RuleMatchField): RulePatternType[] {
 const UNCATEGORIZED_FILTER_VALUE = '__uncategorized__';
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
 
+function getTodayLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+const emptyManualTransactionForm = () => ({
+  accountId: '',
+  postedDate: getTodayLocalDateString(),
+  transactedDate: '',
+  amount: '',
+  description: '',
+  payee: '',
+  memo: '',
+  categoryId: '',
+  notes: '',
+  pending: false,
+  excludeFromTotals: false,
+});
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TransactionFilters>(defaultTransactionFilters());
   const [transferOffset, setTransferOffset] = useState(0);
   const [transferLimit, setTransferLimit] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [ruleForm, setRuleForm] = useState<null | (typeof emptyRuleForm & { source: string })>(null);
+  const [manualFormOpen, setManualFormOpen] = useState(false);
+  const [manualForm, setManualForm] = useState(emptyManualTransactionForm);
+  const [manualFormError, setManualFormError] = useState<string | null>(null);
 
   const accountsQuery = useQuery({
     queryKey: queryKeys.accounts.all(),
@@ -126,6 +154,29 @@ export function TransactionsPage() {
     },
   });
 
+  const createTransactionMutation = useMutation({
+    mutationFn: createTransaction,
+    onSuccess: () => {
+      setManualFormOpen(false);
+      setManualForm(emptyManualTransactionForm());
+      setManualFormError(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.coverage() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+    },
+    onError: (error) => {
+      if (error instanceof ApiClientError) {
+        if (error.errors && Object.keys(error.errors).length > 0) {
+          setManualFormError(Object.values(error.errors).join(' '));
+          return;
+        }
+        setManualFormError(error.message);
+        return;
+      }
+      setManualFormError('Unable to create transaction. Please try again.');
+    },
+  });
+
   const transfersQuery = useQuery({
     queryKey: queryKeys.transactions.transfers(),
     queryFn: getTransfers,
@@ -143,6 +194,16 @@ export function TransactionsPage() {
     mutationFn: unlinkTransfer,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.coverage() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.transfers() });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
     },
   });
@@ -183,6 +244,68 @@ export function TransactionsPage() {
     }
     setTransferLimit(nextPageSize as (typeof PAGE_SIZE_OPTIONS)[number]);
     setTransferOffset(0);
+  };
+
+  const openManualForm = () => {
+    const firstAccountId = accountsQuery.data?.[0]?.id;
+    setManualForm({
+      ...emptyManualTransactionForm(),
+      accountId: firstAccountId ? String(firstAccountId) : '',
+    });
+    setManualFormError(null);
+    setManualFormOpen(true);
+  };
+
+  const closeManualForm = () => {
+    if (createTransactionMutation.isPending) {
+      return;
+    }
+    setManualFormOpen(false);
+    setManualFormError(null);
+  };
+
+  const submitManualForm = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setManualFormError(null);
+
+    if (!manualForm.accountId) {
+      setManualFormError('Account is required.');
+      return;
+    }
+    if (!manualForm.postedDate) {
+      setManualFormError('Posted date is required.');
+      return;
+    }
+
+    const amount = Number(manualForm.amount);
+    if (!Number.isFinite(amount)) {
+      setManualFormError('Amount must be a valid number.');
+      return;
+    }
+    if (amount === 0) {
+      setManualFormError('Amount must be non-zero.');
+      return;
+    }
+
+    const description = manualForm.description.trim();
+    if (!description) {
+      setManualFormError('Description is required.');
+      return;
+    }
+
+    createTransactionMutation.mutate({
+      accountId: Number(manualForm.accountId),
+      postedDate: manualForm.postedDate,
+      transactedDate: manualForm.transactedDate || undefined,
+      amount,
+      description,
+      payee: manualForm.payee.trim() || undefined,
+      memo: manualForm.memo.trim() || undefined,
+      categoryId: manualForm.categoryId ? Number(manualForm.categoryId) : undefined,
+      notes: manualForm.notes.trim() || undefined,
+      pending: manualForm.pending,
+      excludeFromTotals: manualForm.excludeFromTotals,
+    });
   };
 
   const openRuleForm = (transaction: TransactionDto) => {
@@ -310,6 +433,21 @@ export function TransactionsPage() {
     ruleForm.conditions.length > 0 &&
     ruleForm.conditions.every((condition) => condition.value.trim().length > 0);
 
+  useEffect(() => {
+    if (!manualFormOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeManualForm();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [manualFormOpen, createTransactionMutation.isPending]);
+
   return (
     <section className="page">
       <h2>Transactions</h2>
@@ -425,19 +563,28 @@ export function TransactionsPage() {
       <Card
         title="Unified Transactions"
         actions={
-          <div style={{ width: '180px' }}>
-            <Select
-              id="unified-transactions-page-size"
-              label="Items per page"
-              value={String(filters.limit)}
-              onChange={(event) => setUnifiedPageSize(event.target.value)}
+          <div className="transactions-card-actions">
+            <Button
+              type="button"
+              onClick={openManualForm}
+              disabled={createTransactionMutation.isPending || (accountsQuery.data?.length ?? 0) === 0}
             >
-              {PAGE_SIZE_OPTIONS.map((pageSizeOption) => (
-                <option key={pageSizeOption} value={pageSizeOption}>
-                  {pageSizeOption}
-                </option>
-              ))}
-            </Select>
+              Add transaction
+            </Button>
+            <div className="transactions-card-page-size">
+              <Select
+                id="unified-transactions-page-size"
+                label="Items per page"
+                value={String(filters.limit)}
+                onChange={(event) => setUnifiedPageSize(event.target.value)}
+              >
+                {PAGE_SIZE_OPTIONS.map((pageSizeOption) => (
+                  <option key={pageSizeOption} value={pageSizeOption}>
+                    {pageSizeOption}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
         }
       >
@@ -449,7 +596,7 @@ export function TransactionsPage() {
                   key={transaction.id}
                   transaction={transaction}
                   categories={categoryOptions}
-                  disabled={markTransferMutation.isPending}
+                  disabled={markTransferMutation.isPending || deleteMutation.isPending}
                   onCategoryChange={(transactionId, categoryId) =>
                     updateMutation.mutate({ id: transactionId, payload: { categoryId } })
                   }
@@ -459,6 +606,7 @@ export function TransactionsPage() {
                   onNotesChange={(transactionId, notes) => updateMutation.mutate({ id: transactionId, payload: { notes } })}
                   onAddRule={openRuleForm}
                   onMarkTransfer={(transactionId, pairId) => markTransferMutation.mutate({ id: transactionId, pairId })}
+                  onDelete={(transactionId) => deleteMutation.mutate(transactionId)}
                 />
               ))}
             </div>
@@ -531,6 +679,161 @@ export function TransactionsPage() {
           <EmptyState title="No transfer pairs" description="Transfer pairs will appear here when transactions are linked as internal transfers." />
         )}
       </Card>
+
+      {manualFormOpen && (
+        <div className="modal-backdrop" onMouseDown={closeManualForm}>
+          <div className="modal-shell" onMouseDown={(event) => event.stopPropagation()}>
+            <Card
+              title="Add Manual Transaction"
+              actions={
+                <Button type="button" variant="secondary" onClick={closeManualForm} disabled={createTransactionMutation.isPending}>
+                  Close
+                </Button>
+              }
+            >
+              <form className="manual-transaction-form" onSubmit={submitManualForm}>
+                <div className="manual-transaction-form-grid">
+                  <Select
+                    id="manual-transaction-account"
+                    label="Account"
+                    value={manualForm.accountId}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, accountId: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  >
+                    <option value="">Select account</option>
+                    {(accountsQuery.data ?? []).map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </Select>
+
+                  <Input
+                    id="manual-transaction-posted-date"
+                    label="Posted date"
+                    type="date"
+                    value={manualForm.postedDate}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, postedDate: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  />
+
+                  <Input
+                    id="manual-transaction-transacted-date"
+                    label="Transacted date"
+                    type="date"
+                    value={manualForm.transactedDate}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, transactedDate: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  />
+
+                  <Input
+                    id="manual-transaction-amount"
+                    label="Amount"
+                    type="number"
+                    step="0.01"
+                    value={manualForm.amount}
+                    placeholder="-42.50 for expense, 1500 for income"
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, amount: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  />
+
+                  <Input
+                    id="manual-transaction-description"
+                    label="Description"
+                    value={manualForm.description}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, description: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  />
+
+                  <Input
+                    id="manual-transaction-payee"
+                    label="Payee"
+                    value={manualForm.payee}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, payee: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  />
+
+                  <Input
+                    id="manual-transaction-memo"
+                    label="Memo"
+                    value={manualForm.memo}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, memo: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  />
+
+                  <Select
+                    id="manual-transaction-category"
+                    label="Category"
+                    value={manualForm.categoryId}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, categoryId: event.target.value }))}
+                    disabled={createTransactionMutation.isPending}
+                  >
+                    <option value="">Uncategorized (auto-rule match)</option>
+                    {categoryFilterOptions.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </Select>
+
+                  <div className="field manual-transaction-checkbox">
+                    <span className="field-label">Status</span>
+                    <label htmlFor="manual-transaction-pending" className="transactions-filters-checkbox">
+                      <input
+                        id="manual-transaction-pending"
+                        type="checkbox"
+                        checked={manualForm.pending}
+                        onChange={(event) => setManualForm((prev) => ({ ...prev, pending: event.target.checked }))}
+                        disabled={createTransactionMutation.isPending}
+                      />
+                      <span>Pending transaction</span>
+                    </label>
+                  </div>
+
+                  <div className="field manual-transaction-checkbox">
+                    <span className="field-label">Totals</span>
+                    <label htmlFor="manual-transaction-exclude-from-totals" className="transactions-filters-checkbox">
+                      <input
+                        id="manual-transaction-exclude-from-totals"
+                        type="checkbox"
+                        checked={manualForm.excludeFromTotals}
+                        onChange={(event) =>
+                          setManualForm((prev) => ({ ...prev, excludeFromTotals: event.target.checked }))
+                        }
+                        disabled={createTransactionMutation.isPending}
+                      />
+                      <span>Exclude from totals</span>
+                    </label>
+                  </div>
+                </div>
+
+                <label className="field" htmlFor="manual-transaction-notes">
+                  <span className="field-label">Notes</span>
+                  <textarea
+                    id="manual-transaction-notes"
+                    className="input manual-transaction-notes"
+                    value={manualForm.notes}
+                    onChange={(event) => setManualForm((prev) => ({ ...prev, notes: event.target.value }))}
+                    placeholder="Optional details"
+                    disabled={createTransactionMutation.isPending}
+                  />
+                </label>
+
+                {manualFormError && <p className="field-error">{manualFormError}</p>}
+
+                <div className="manual-transaction-actions">
+                  <Button type="submit" disabled={createTransactionMutation.isPending}>
+                    Save transaction
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={closeManualForm} disabled={createTransactionMutation.isPending}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {ruleForm && (
         <div

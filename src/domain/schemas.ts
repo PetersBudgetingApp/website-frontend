@@ -141,6 +141,7 @@ export const transactionSchema = z.object({
   transferPairAccountName: z.string().nullable().optional(),
   recurring: z.boolean(),
   notes: z.string().nullable().optional(),
+  manualEntry: z.boolean().optional(),
 });
 
 export const transactionCoverageSchema = z.object({
