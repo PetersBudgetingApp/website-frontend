@@ -164,6 +164,31 @@ export const spendingByCategorySchema = z.object({
   ),
 });
 
+export const budgetInsightsSchema = z.object({
+  month: z.string(),
+  asOfDate: z.string(),
+  historyMonths: z.number(),
+  totalCurrentBudget: z.number(),
+  totalRecommendedBudget: z.number(),
+  categories: z.array(
+    z.object({
+      categoryId: z.number(),
+      categoryName: z.string(),
+      categoryColor: z.string().nullable().optional(),
+      currentBudget: z.number(),
+      currentMonthSpend: z.number(),
+      averageMonthlySpend: z.number(),
+      recommendedBudget: z.number(),
+      budgetDelta: z.number(),
+      budgetDeltaPct: z.number().nullable().optional(),
+      monthToDateSpend: z.number(),
+      averageMonthToDateSpend: z.number(),
+      monthToDateDelta: z.number(),
+      monthToDateDeltaPct: z.number().nullable().optional(),
+    }),
+  ),
+});
+
 export const trendSchema = z.object({
   trends: z.array(
     z.object({

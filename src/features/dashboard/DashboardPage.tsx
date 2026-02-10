@@ -1,9 +1,12 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCurrentMonthKey, formatCurrency } from '@domain/format';
+import type { BudgetTarget } from '@domain/types';
+import { budgetInsightDetailPath } from '@app/routes';
 import { getAccountSummary } from '@shared/api/endpoints/accounts';
-import { getCashFlow, getSpendingByCategory, getTrends } from '@shared/api/endpoints/analytics';
-import { getBudgetMonth } from '@shared/api/endpoints/budgets';
+import { getBudgetInsights, getCashFlow, getSpendingByCategory, getTrends } from '@shared/api/endpoints/analytics';
+import { getBudgetMonth, upsertBudgetMonth } from '@shared/api/endpoints/budgets';
 import { getCategories } from '@shared/api/endpoints/categories';
 import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
@@ -11,13 +14,17 @@ import { Spinner } from '@shared/ui/Spinner';
 import { queryKeys } from '@shared/query/keys';
 import { monthToDateRange } from '@shared/utils/date';
 import { getBudgetPerformance } from '@features/budgets/budgetStore';
+import { BudgetInsightsPanel } from '@features/dashboard/components/BudgetInsightsPanel';
 import { IncomeVsSpendingChart } from '@features/dashboard/components/IncomeVsSpendingChart';
 import { NetWorthBreakdownCard } from '@features/dashboard/components/NetWorthBreakdownCard';
 import { SummaryCards } from '@features/dashboard/components/SummaryCards';
 
 export function DashboardPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const month = getCurrentMonthKey();
   const { startDate, endDate } = monthToDateRange(month);
+  const [insightStatusMessage, setInsightStatusMessage] = useState<string | null>(null);
 
   const accountSummaryQuery = useQuery({
     queryKey: queryKeys.accounts.summary(),
@@ -49,6 +56,62 @@ export function DashboardPage() {
     queryFn: () => getBudgetMonth(month),
   });
 
+  const budgetInsightsQuery = useQuery({
+    queryKey: queryKeys.analytics.budgetInsights(month, 6),
+    queryFn: () => getBudgetInsights(month, 6),
+  });
+
+  const categoryNameById = useMemo(
+    () => new Map((categoriesQuery.data ?? []).map((category) => [category.id, category.name])),
+    [categoriesQuery.data],
+  );
+
+  const applyRecommendationMutation = useMutation({
+    mutationFn: async (input: { categoryId: number; recommendedBudget: number; categoryName: string }) => {
+      if (!budgetMonthQuery.data) {
+        throw new Error('Budget month data is not loaded.');
+      }
+
+      const targetsByCategoryId = new Map(
+        budgetMonthQuery.data.targets.map((target) => [
+          target.categoryId,
+          {
+            categoryId: target.categoryId,
+            targetAmount: target.targetAmount,
+            notes: target.notes ?? '',
+          },
+        ]),
+      );
+
+      const existingTarget = targetsByCategoryId.get(input.categoryId);
+      targetsByCategoryId.set(input.categoryId, {
+        categoryId: input.categoryId,
+        targetAmount: Number(input.recommendedBudget.toFixed(2)),
+        notes: existingTarget?.notes ?? '',
+      });
+
+      const nextTargets: BudgetTarget[] = Array.from(targetsByCategoryId.values()).map((target) => ({
+        categoryId: target.categoryId,
+        categoryName: categoryNameById.get(target.categoryId) ?? 'Unknown',
+        targetAmount: target.targetAmount,
+        notes: target.notes,
+      }));
+
+      return upsertBudgetMonth(month, nextTargets);
+    },
+    onSuccess: (saved, variables) => {
+      queryClient.setQueryData(queryKeys.budgets.month(month), saved);
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.budgetInsights(month, 6) });
+      setInsightStatusMessage(
+        `Updated ${variables.categoryName} budget to ${formatCurrency(Number(variables.recommendedBudget.toFixed(2)))}.`,
+      );
+    },
+    onError: () => {
+      setInsightStatusMessage('Could not apply recommendation. Try again.');
+    },
+  });
+
   const budgetSummary = useMemo(() => {
     if (!budgetMonthQuery.data || !spendingQuery.data || !categoriesQuery.data) {
       return { target: 0, actual: 0, overspentCount: 0 };
@@ -61,7 +124,6 @@ export function DashboardPage() {
       }
     });
 
-    const categoryNameById = new Map(categoriesQuery.data.map((category) => [category.id, category.name]));
     const targets = budgetMonthQuery.data.targets.map((target) => ({
       categoryId: target.categoryId,
       categoryName: categoryNameById.get(target.categoryId) ?? 'Unknown',
@@ -156,6 +218,21 @@ export function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      <BudgetInsightsPanel
+        insights={budgetInsightsQuery.data}
+        isLoading={budgetInsightsQuery.isLoading}
+        isError={budgetInsightsQuery.isError}
+        applyingCategoryId={applyRecommendationMutation.isPending ? (applyRecommendationMutation.variables?.categoryId ?? null) : null}
+        statusMessage={insightStatusMessage}
+        onOpenDetails={(categoryId) => {
+          navigate(`${budgetInsightDetailPath(categoryId)}?month=${month}`);
+        }}
+        onApplyRecommendation={(categoryId, recommendedBudget, categoryName) => {
+          setInsightStatusMessage(null);
+          applyRecommendationMutation.mutate({ categoryId, recommendedBudget, categoryName });
+        }}
+      />
     </section>
   );
 }

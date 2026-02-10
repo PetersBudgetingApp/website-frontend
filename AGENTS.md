@@ -77,6 +77,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 
 ### Protected routes
 - `/dashboard` -> `DashboardPage`
+- `/dashboard/budget-insights/:categoryId` -> `BudgetInsightDetailPage` (detail view, not in nav)
 - `/connections` -> `ConnectionsPage`
 - `/transactions` -> `TransactionsPage`
 - `/categories` -> `CategoriesPage`
@@ -124,6 +125,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Feature pages:
   - `src/features/auth/AuthPages.tsx`
   - `src/features/dashboard/DashboardPage.tsx`
+  - `src/features/dashboard/BudgetInsightDetailPage.tsx`
   - `src/features/connections/ConnectionsPage.tsx`
   - `src/features/transactions/TransactionsPage.tsx`
   - `src/features/categories/CategoriesPage.tsx`
@@ -152,6 +154,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - `queryKeys.analytics.spending(startDate, endDate)`
 - `queryKeys.analytics.cashFlow(startDate, endDate)`
 - `queryKeys.analytics.trends(months)`
+- `queryKeys.analytics.budgetInsights(month, historyMonths)`
+- `queryKeys.analytics.budgetInsightTransactions(categoryId)`
 - `queryKeys.budgets.all()` -> `['budgets']`
 - `queryKeys.budgets.month(month)` -> `['budgets', month]`
 - `queryKeys.recurring.all()` -> `['recurring']`
@@ -170,6 +174,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - accounts summary
   - cashflow by current month range
   - spending by current month range
+  - budget alignment insights by current month (`/analytics/budget-insights`)
   - flat categories
 - Net worth card behavior:
   - shows three account sections: `Bank Accounts`, `Investments`, `Liabilities`
@@ -179,9 +184,12 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `accounts.summary`
   - `analytics.cashFlow(startDate,endDate)`
   - `analytics.spending(startDate,endDate)`
+  - `analytics.budgetInsights(month,historyMonths)`
   - `categories.flat`
   - `budgets.month(month)`
 - Budget summary combines backend spending with persisted monthly budget targets from `/budgets`.
+- Budget insights section provides per-category recommended budget alignment (set to historical average spend), displays `Current Budget`, `Recommended Budget`, `Average Spend`, and `Current Spend`, and supports one-click apply that upserts current month targets via `/budgets/{month}` directly from Dashboard.
+- Each budget insight card is clickable and routes to `/dashboard/budget-insights/:categoryId`, where category-specific monthly spend trend (with tooltip + average benchmark line) and merchant-level rollup metrics are derived from paged `/transactions` reads filtered by category.
 
 ### Connections (`src/features/connections/ConnectionsPage.tsx`)
 - Reads:

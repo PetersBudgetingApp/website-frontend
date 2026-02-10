@@ -4,6 +4,7 @@ import { AppShell } from '@app/layout/AppShell';
 import { appRoutes, defaultAuthenticatedRoute } from '@app/routes';
 import { LoginPage, RegisterPage } from '@features/auth/AuthPages';
 import { DashboardPage } from '@features/dashboard/DashboardPage';
+import { BudgetInsightDetailPage } from '@features/dashboard/BudgetInsightDetailPage';
 import { ConnectionsPage } from '@features/connections/ConnectionsPage';
 import { TransactionsPage } from '@features/transactions/TransactionsPage';
 import { CategoriesPage } from '@features/categories/CategoriesPage';
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to={defaultAuthenticatedRoute} replace /> },
           { path: appRoutes.dashboard, element: <DashboardPage /> },
+          { path: appRoutes.budgetInsightDetail, element: <BudgetInsightDetailPage /> },
           { path: appRoutes.connections, element: <ConnectionsPage /> },
           { path: appRoutes.transactions, element: <TransactionsPage /> },
           { path: appRoutes.categories, element: <CategoriesPage /> },

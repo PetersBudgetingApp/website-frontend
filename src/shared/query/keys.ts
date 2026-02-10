@@ -28,6 +28,8 @@ export const queryKeys = {
     spending: (startDate?: string, endDate?: string) => ['analytics', 'spending', startDate, endDate] as const,
     cashFlow: (startDate?: string, endDate?: string) => ['analytics', 'cashflow', startDate, endDate] as const,
     trends: (months = 6) => ['analytics', 'trends', months] as const,
+    budgetInsights: (month: string, historyMonths = 6) => ['analytics', 'budget-insights', month, historyMonths] as const,
+    budgetInsightTransactions: (categoryId: number) => ['analytics', 'budget-insights', 'transactions', categoryId] as const,
   },
   budgets: {
     all: () => ['budgets'] as const,

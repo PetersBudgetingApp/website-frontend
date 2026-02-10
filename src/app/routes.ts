@@ -2,6 +2,7 @@ export const appRoutes = {
   login: '/login',
   register: '/register',
   dashboard: '/dashboard',
+  budgetInsightDetail: '/dashboard/budget-insights/:categoryId',
   connections: '/connections',
   transactions: '/transactions',
   categories: '/categories',
@@ -9,6 +10,10 @@ export const appRoutes = {
   recurring: '/recurring',
   accountDetail: '/accounts/:id',
 } as const;
+
+export function budgetInsightDetailPath(categoryId: number | string): string {
+  return `/dashboard/budget-insights/${categoryId}`;
+}
 
 export interface NavigationRoute {
   path: string;

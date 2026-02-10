@@ -55,6 +55,7 @@ Template: `frontend/.env.example`
 - Auth (register/login/restore/logout)
 - Connection setup and sync
 - Dashboard analytics snapshot
+- Budget alignment insights with per-category drill-down trend + merchant analysis
 - Unified transaction workspace with filters and inline edits
 - Category management
 - Monthly budget targets (server-backed) and budget-vs-actual comparison
