@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency, formatMonth, getCurrentMonthKey } from '@domain/format';
 import type { BudgetTarget } from '@domain/types';
-import { getSpendingByCategory } from '@shared/api/endpoints/analytics';
+import { budgetInsightDetailPath } from '@app/routes';
+import { getBudgetInsights, getSpendingByCategory } from '@shared/api/endpoints/analytics';
 import { deleteBudgetTarget, getBudgetMonth, upsertBudgetMonth } from '@shared/api/endpoints/budgets';
 import { getCategories } from '@shared/api/endpoints/categories';
 import { getTransactions } from '@shared/api/endpoints/transactions';
@@ -13,6 +15,9 @@ import { EmptyState } from '@shared/ui/EmptyState';
 import { monthToDateRange } from '@shared/utils/date';
 import { getBudgetPerformance } from '@features/budgets/budgetStore';
 import { BudgetEditorTable } from '@features/budgets/components/BudgetEditorTable';
+import { BudgetInsightsPanel } from '@features/dashboard/components/BudgetInsightsPanel';
+
+type BudgetView = 'actual' | 'insights';
 
 function listMonths(count = 12) {
   const values: string[] = [];
@@ -26,10 +31,13 @@ function listMonths(count = 12) {
 }
 
 export function BudgetsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(getCurrentMonthKey());
+  const [activeView, setActiveView] = useState<BudgetView>('actual');
   const [targetsByCategory, setTargetsByCategory] = useState<Record<number, BudgetTarget>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [insightStatusMessage, setInsightStatusMessage] = useState<string | null>(null);
 
   const { startDate, endDate } = monthToDateRange(month);
 
@@ -60,8 +68,18 @@ export function BudgetsPage() {
     queryFn: () => getBudgetMonth(month),
   });
 
+  const budgetInsightsQuery = useQuery({
+    queryKey: queryKeys.analytics.budgetInsights(month, 6),
+    queryFn: () => getBudgetInsights(month, 6),
+  });
+
   const expenseCategories = useMemo(
     () => (categoriesQuery.data ?? []).filter((item) => item.categoryType === 'EXPENSE'),
+    [categoriesQuery.data],
+  );
+
+  const categoryNameById = useMemo(
+    () => new Map((categoriesQuery.data ?? []).map((category) => [category.id, category.name])),
     [categoriesQuery.data],
   );
 
@@ -90,6 +108,7 @@ export function BudgetsPage() {
     onSuccess: (saved) => {
       queryClient.setQueryData(queryKeys.budgets.month(month), saved);
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.budgetInsights(month, 6) });
       setSaveMessage(`Saved ${saved.targets.length} targets for ${formatMonth(month)}.`);
     },
   });
@@ -99,6 +118,53 @@ export function BudgetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.month(month) });
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.budgetInsights(month, 6) });
+    },
+  });
+
+  const applyRecommendationMutation = useMutation({
+    mutationFn: async (input: { categoryId: number; recommendedBudget: number; categoryName: string }) => {
+      if (!budgetMonthQuery.data) {
+        throw new Error('Budget month data is not loaded.');
+      }
+
+      const targetsByCategoryId = new Map(
+        budgetMonthQuery.data.targets.map((target) => [
+          target.categoryId,
+          {
+            categoryId: target.categoryId,
+            targetAmount: target.targetAmount,
+            notes: target.notes ?? '',
+          },
+        ]),
+      );
+
+      const existingTarget = targetsByCategoryId.get(input.categoryId);
+      targetsByCategoryId.set(input.categoryId, {
+        categoryId: input.categoryId,
+        targetAmount: Number(input.recommendedBudget.toFixed(2)),
+        notes: existingTarget?.notes ?? '',
+      });
+
+      const nextTargets: BudgetTarget[] = Array.from(targetsByCategoryId.values()).map((target) => ({
+        categoryId: target.categoryId,
+        categoryName: categoryNameById.get(target.categoryId) ?? 'Unknown',
+        targetAmount: target.targetAmount,
+        notes: target.notes,
+      }));
+
+      return upsertBudgetMonth(month, nextTargets);
+    },
+    onSuccess: (saved, variables) => {
+      queryClient.setQueryData(queryKeys.budgets.month(month), saved);
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.budgetInsights(month, 6) });
+      setInsightStatusMessage(
+        `Updated ${variables.categoryName} budget to ${formatCurrency(Number(variables.recommendedBudget.toFixed(2)))}.`,
+      );
+    },
+    onError: () => {
+      setInsightStatusMessage('Could not apply recommendation. Try again.');
     },
   });
 
@@ -154,97 +220,136 @@ export function BudgetsPage() {
   return (
     <section className="page">
       <h2>Budgets</h2>
+      <div style={{ display: 'flex', gap: '0.7rem', alignItems: 'end', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+        <label className="field" htmlFor="month-select" style={{ maxWidth: '220px' }}>
+          <span className="field-label">Month</span>
+          <select id="month-select" className="select" value={month} onChange={(event) => setMonth(event.target.value)}>
+            {listMonths().map((monthKey) => (
+              <option key={monthKey} value={monthKey}>
+                {formatMonth(monthKey)}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <Card title="Monthly Targets" actions={<strong>{formatMonth(month)}</strong>}>
-        <div style={{ display: 'flex', gap: '0.7rem', alignItems: 'end', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
-          <label className="field" htmlFor="month-select" style={{ maxWidth: '220px' }}>
-            <span className="field-label">Month</span>
-            <select id="month-select" className="select" value={month} onChange={(event) => setMonth(event.target.value)}>
-              {listMonths().map((monthKey) => (
-                <option key={monthKey} value={monthKey}>
-                  {formatMonth(monthKey)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <Button type="button" onClick={saveTargets} disabled={saveMutation.isPending}>
-            Save Monthly Targets
-          </Button>
-
-          {saveMessage && <p className="subtle">{saveMessage}</p>}
+        <div className="chart-toggle" role="group" aria-label="Budgets view">
+          <button
+            type="button"
+            className={`btn ${activeView === 'actual' ? 'btn-primary' : 'btn-secondary'} chart-toggle-btn`}
+            onClick={() => setActiveView('actual')}
+            aria-pressed={activeView === 'actual'}
+          >
+            Actual Budgets
+          </button>
+          <button
+            type="button"
+            className={`btn ${activeView === 'insights' ? 'btn-primary' : 'btn-secondary'} chart-toggle-btn`}
+            onClick={() => setActiveView('insights')}
+            aria-pressed={activeView === 'insights'}
+          >
+            Insights
+          </button>
         </div>
+      </div>
 
-        {expenseCategories.length > 0 ? (
-          <BudgetEditorTable
-            categories={expenseCategories}
-            targetsByCategory={targetsByCategory}
-            actualByCategory={actualByCategory}
-            onDeleteTarget={deleteTarget}
-            onTargetChange={(categoryId, field, value) => {
-              const categoryName = expenseCategories.find((item) => item.id === categoryId)?.name ?? 'Unknown';
-              setTargetsByCategory((prev) => {
-                const base = prev[categoryId] ?? {
-                  categoryId,
-                  categoryName,
-                  targetAmount: 0,
-                  notes: '',
-                };
+      {activeView === 'actual' ? (
+        <>
+          <Card title="Monthly Targets" actions={<strong>{formatMonth(month)}</strong>}>
+            <div style={{ display: 'flex', gap: '0.7rem', alignItems: 'end', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+              <Button type="button" onClick={saveTargets} disabled={saveMutation.isPending}>
+                Save Monthly Targets
+              </Button>
 
-                return {
-                  ...prev,
-                  [categoryId]: {
-                    ...base,
-                    [field]: field === 'targetAmount' ? Number(value || 0) : value,
-                  },
-                };
-              });
-            }}
-          />
-        ) : (
-          <EmptyState title="No expense categories" description="Create or sync categories before setting budgets." />
-        )}
-      </Card>
+              {saveMessage && <p className="subtle">{saveMessage}</p>}
+            </div>
 
-      <Card title="Budget vs Actual">
-        {performance.length > 0 ? (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Target</th>
-                <th>Actual</th>
-                <th>Variance</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {performance.map((row) => (
-                <tr key={row.categoryId}>
-                  <td>{row.categoryName}</td>
-                  <td className="number">{formatCurrency(row.targetAmount)}</td>
-                  <td className="number">{formatCurrency(row.actualAmount)}</td>
-                  <td className={`number ${row.varianceAmount < 0 ? 'field-error' : ''}`}>{formatCurrency(row.varianceAmount)}</td>
-                  <td>{row.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <EmptyState title="No targets yet" description="Set monthly category targets to start comparisons." />
-        )}
-      </Card>
+            {expenseCategories.length > 0 ? (
+              <BudgetEditorTable
+                categories={expenseCategories}
+                targetsByCategory={targetsByCategory}
+                actualByCategory={actualByCategory}
+                onDeleteTarget={deleteTarget}
+                onTargetChange={(categoryId, field, value) => {
+                  const categoryName = expenseCategories.find((item) => item.id === categoryId)?.name ?? 'Unknown';
+                  setTargetsByCategory((prev) => {
+                    const base = prev[categoryId] ?? {
+                      categoryId,
+                      categoryName,
+                      targetAmount: 0,
+                      notes: '',
+                    };
 
-      <Card title="Uncategorized Spending Warning">
-        {uncategorizedCount > 0 ? (
-          <p>
-            {uncategorizedCount} uncategorized spending transactions found for {formatMonth(month)}. Categorize these so budget insights stay
-            accurate.
-          </p>
-        ) : (
-          <p className="subtle">No uncategorized spending for this month.</p>
-        )}
-      </Card>
+                    return {
+                      ...prev,
+                      [categoryId]: {
+                        ...base,
+                        [field]: field === 'targetAmount' ? Number(value || 0) : value,
+                      },
+                    };
+                  });
+                }}
+              />
+            ) : (
+              <EmptyState title="No expense categories" description="Create or sync categories before setting budgets." />
+            )}
+          </Card>
+
+          <Card title="Budget vs Actual">
+            {performance.length > 0 ? (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Target</th>
+                    <th>Actual</th>
+                    <th>Variance</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {performance.map((row) => (
+                    <tr key={row.categoryId}>
+                      <td>{row.categoryName}</td>
+                      <td className="number">{formatCurrency(row.targetAmount)}</td>
+                      <td className="number">{formatCurrency(row.actualAmount)}</td>
+                      <td className={`number ${row.varianceAmount < 0 ? 'field-error' : ''}`}>{formatCurrency(row.varianceAmount)}</td>
+                      <td>{row.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <EmptyState title="No targets yet" description="Set monthly category targets to start comparisons." />
+            )}
+          </Card>
+
+          <Card title="Uncategorized Spending Warning">
+            {uncategorizedCount > 0 ? (
+              <p>
+                {uncategorizedCount} uncategorized spending transactions found for {formatMonth(month)}. Categorize these so budget insights stay
+                accurate.
+              </p>
+            ) : (
+              <p className="subtle">No uncategorized spending for this month.</p>
+            )}
+          </Card>
+        </>
+      ) : (
+        <BudgetInsightsPanel
+          insights={budgetInsightsQuery.data}
+          isLoading={budgetInsightsQuery.isLoading}
+          isError={budgetInsightsQuery.isError}
+          applyingCategoryId={applyRecommendationMutation.isPending ? (applyRecommendationMutation.variables?.categoryId ?? null) : null}
+          statusMessage={insightStatusMessage}
+          onOpenDetails={(categoryId) => {
+            navigate(`${budgetInsightDetailPath(categoryId)}?month=${month}`);
+          }}
+          onApplyRecommendation={(categoryId, recommendedBudget, categoryName) => {
+            setInsightStatusMessage(null);
+            applyRecommendationMutation.mutate({ categoryId, recommendedBudget, categoryName });
+          }}
+        />
+      )}
     </section>
   );
 }

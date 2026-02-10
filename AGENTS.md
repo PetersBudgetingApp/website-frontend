@@ -188,7 +188,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `categories.flat`
   - `budgets.month(month)`
 - Budget summary combines backend spending with persisted monthly budget targets from `/budgets`.
-- Budget insights section provides per-category recommended budget alignment (set to historical average spend), displays `Current Budget`, `Recommended Budget`, `Average Spend`, and `Current Spend`, and supports one-click apply that upserts current month targets via `/budgets/{month}` directly from Dashboard.
+- Budget insights section provides per-category recommended budget alignment (weighted toward recent months with 50%/25%/12.5%... normalized weighting), displays `Current Budget`, `Recommended Budget`, `Average Spend`, and `Current Spend`, and supports one-click apply that upserts current month targets via `/budgets/{month}` directly from Dashboard.
 - Each budget insight card is clickable and routes to `/dashboard/budget-insights/:categoryId`, where category-specific monthly spend trend (with tooltip + average benchmark line) and merchant-level rollup metrics are derived from paged `/transactions` reads filtered by category.
 
 ### Connections (`src/features/connections/ConnectionsPage.tsx`)
@@ -278,7 +278,10 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - month budgets (`/budgets?month=YYYY-MM`)
   - flat categories
   - spending by month
+  - budget alignment insights (`/analytics/budget-insights`)
   - filtered transactions for uncategorized warning
+- UX behavior:
+  - top-level toggle switches between `Actual Budgets` (target editing + variance table + uncategorized warning) and `Insights` (shared budget insights panel with apply recommendation + detail navigation).
 - Writes:
   - upsert monthly targets (`PUT /budgets/{month}`)
   - delete category target (`DELETE /budgets/{month}/categories/{categoryId}`)
