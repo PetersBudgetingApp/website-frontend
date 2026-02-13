@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency, formatMonth, getCurrentMonthKey } from '@domain/format';
 import type { BudgetTarget } from '@domain/types';
-import { budgetInsightDetailPath } from '@app/routes';
+import { appRoutes, budgetInsightDetailPath } from '@app/routes';
 import { getBudgetInsights, getSpendingByCategory } from '@shared/api/endpoints/analytics';
 import { deleteBudgetTarget, getBudgetMonth, upsertBudgetMonth } from '@shared/api/endpoints/budgets';
 import { getCategories } from '@shared/api/endpoints/categories';
@@ -32,9 +32,11 @@ function listMonths(count = 12) {
 
 export function BudgetsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(getCurrentMonthKey());
-  const [activeView, setActiveView] = useState<BudgetView>('actual');
+  const initialTab = (location.state as { tab?: BudgetView } | null)?.tab;
+  const [activeView, setActiveView] = useState<BudgetView>(initialTab === 'insights' ? 'insights' : 'actual');
   const [targetsByCategory, setTargetsByCategory] = useState<Record<number, BudgetTarget>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [insightStatusMessage, setInsightStatusMessage] = useState<string | null>(null);
@@ -342,7 +344,7 @@ export function BudgetsPage() {
           applyingCategoryId={applyRecommendationMutation.isPending ? (applyRecommendationMutation.variables?.categoryId ?? null) : null}
           statusMessage={insightStatusMessage}
           onOpenDetails={(categoryId) => {
-            navigate(`${budgetInsightDetailPath(categoryId)}?month=${month}`);
+            navigate(`${budgetInsightDetailPath(categoryId)}?month=${month}`, { state: { from: appRoutes.budgets } });
           }}
           onApplyRecommendation={(categoryId, recommendedBudget, categoryName) => {
             setInsightStatusMessage(null);

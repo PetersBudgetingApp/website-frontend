@@ -30,7 +30,26 @@ export interface CreateTransactionRequest {
   notes?: string;
 }
 
+function buildAmountQueryParams(filters: TransactionFilters): { minAmount?: number; maxAmount?: number } {
+  if (filters.amountOperator === undefined || filters.amountValue === undefined) {
+    return {};
+  }
+
+  switch (filters.amountOperator) {
+    case 'eq':
+      return { minAmount: filters.amountValue, maxAmount: filters.amountValue };
+    case 'gt':
+      return { minAmount: filters.amountValue };
+    case 'lt':
+      return { maxAmount: filters.amountValue };
+    default:
+      return {};
+  }
+}
+
 export async function getTransactions(filters: TransactionFilters) {
+  const amountParams = buildAmountQueryParams(filters);
+
   return apiClient.request('transactions', {
     method: 'GET',
     query: {
@@ -41,6 +60,8 @@ export async function getTransactions(filters: TransactionFilters) {
       categoryId: filters.categoryId,
       uncategorized: filters.uncategorized,
       accountId: filters.accountId,
+      minAmount: amountParams.minAmount,
+      maxAmount: amountParams.maxAmount,
       limit: filters.limit,
       offset: filters.offset,
     },

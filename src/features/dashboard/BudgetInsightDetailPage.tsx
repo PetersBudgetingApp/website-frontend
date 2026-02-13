@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { appRoutes } from '@app/routes';
 import { formatCurrency, formatMonth, getCurrentMonthKey } from '@domain/format';
@@ -73,9 +73,18 @@ function toSortIndicator(column: MerchantSortColumn, activeColumn: MerchantSortC
   return direction === 'asc' ? ' \u2191' : ' \u2193';
 }
 
+const BACK_TARGETS: Record<string, string> = {
+  [appRoutes.budgets]: 'Budgets',
+  [appRoutes.dashboard]: 'Dashboard',
+};
+
 export function BudgetInsightDetailPage() {
   const { categoryId: categoryIdRaw } = useParams<{ categoryId: string }>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const fromRoute = (location.state as { from?: string } | null)?.from;
+  const backTo = fromRoute && BACK_TARGETS[fromRoute] ? fromRoute : appRoutes.dashboard;
+  const backLabel = BACK_TARGETS[backTo] ?? 'Dashboard';
   const currentMonth = getCurrentMonthKey();
   const month = normalizeMonthKey(searchParams.get('month'), currentMonth);
   const categoryId = Number(categoryIdRaw);
@@ -205,7 +214,7 @@ export function BudgetInsightDetailPage() {
   return (
     <section className="page">
       <p className="budget-insight-detail-backlink">
-        <Link to={appRoutes.dashboard}>&larr; Back to Dashboard</Link>
+        <Link to={backTo} state={backTo === appRoutes.budgets ? { tab: 'insights' } : undefined}>&larr; Back to {backLabel}</Link>
       </p>
 
       <div className="budget-insight-detail-header">

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCurrentMonthKey, formatCurrency } from '@domain/format';
 import type { BudgetTarget } from '@domain/types';
-import { budgetInsightDetailPath } from '@app/routes';
+import { appRoutes, budgetInsightDetailPath } from '@app/routes';
 import { getAccountSummary } from '@shared/api/endpoints/accounts';
 import { getBudgetInsights, getCashFlow, getSpendingByCategory, getTrends } from '@shared/api/endpoints/analytics';
 import { getBudgetMonth, upsertBudgetMonth } from '@shared/api/endpoints/budgets';
@@ -171,6 +171,8 @@ export function DashboardPage() {
         income={cashFlowQuery.data.totalIncome}
         expenses={cashFlowQuery.data.totalExpenses}
         savingsRate={cashFlowQuery.data.savingsRate}
+        onIncomeClick={() => navigate(`${appRoutes.transactions}?amountOperator=gt&amountValue=0`)}
+        onExpensesClick={() => navigate(`${appRoutes.transactions}?amountOperator=lt&amountValue=0`)}
       />
 
       <div className="grid-cards dashboard-summary-grid">
@@ -226,7 +228,7 @@ export function DashboardPage() {
         applyingCategoryId={applyRecommendationMutation.isPending ? (applyRecommendationMutation.variables?.categoryId ?? null) : null}
         statusMessage={insightStatusMessage}
         onOpenDetails={(categoryId) => {
-          navigate(`${budgetInsightDetailPath(categoryId)}?month=${month}`);
+          navigate(`${budgetInsightDetailPath(categoryId)}?month=${month}`, { state: { from: appRoutes.dashboard } });
         }}
         onApplyRecommendation={(categoryId, recommendedBudget, categoryName) => {
           setInsightStatusMessage(null);

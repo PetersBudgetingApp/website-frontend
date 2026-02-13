@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultTransactionFilters } from '@domain/transactions';
 import { formatDate } from '@domain/format';
@@ -22,7 +23,7 @@ import {
   type TransactionDto,
 } from '@shared/api/endpoints/transactions';
 import { ApiClientError } from '@shared/api/httpClient';
-import type { TransactionFilters } from '@domain/types';
+import type { AmountFilterOperator, TransactionFilters } from '@domain/types';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
@@ -99,9 +100,28 @@ const emptyManualTransactionForm = () => ({
   excludeFromTotals: false,
 });
 
+function getInitialFiltersFromSearchParams(searchParams: URLSearchParams): TransactionFilters {
+  const baseFilters = defaultTransactionFilters();
+  const amountOperator = searchParams.get('amountOperator');
+  const amountValue = searchParams.get('amountValue');
+
+  if (amountOperator && (amountOperator === 'eq' || amountOperator === 'gt' || amountOperator === 'lt')) {
+    baseFilters.amountOperator = amountOperator;
+    if (amountValue !== null) {
+      const parsedValue = Number(amountValue);
+      if (Number.isFinite(parsedValue)) {
+        baseFilters.amountValue = parsedValue;
+      }
+    }
+  }
+
+  return baseFilters;
+}
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
-  const [filters, setFilters] = useState<TransactionFilters>(defaultTransactionFilters());
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<TransactionFilters>(() => getInitialFiltersFromSearchParams(searchParams));
   const [transferOffset, setTransferOffset] = useState(0);
   const [transferLimit, setTransferLimit] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [ruleForm, setRuleForm] = useState<null | (typeof emptyRuleForm & { source: string })>(null);
@@ -521,6 +541,44 @@ export function TransactionsPage() {
               </option>
             ))}
           </Select>
+
+          <Select
+            id="amount-operator-filter"
+            label="Amount"
+            value={filters.amountOperator ?? ''}
+            onChange={(event) => {
+              const value = event.target.value as AmountFilterOperator | '';
+              setFilters((prev) => ({
+                ...prev,
+                amountOperator: value || undefined,
+                amountValue: value ? prev.amountValue : undefined,
+                offset: 0,
+              }));
+            }}
+          >
+            <option value="">Any amount</option>
+            <option value="eq">Equals</option>
+            <option value="gt">Greater than</option>
+            <option value="lt">Less than</option>
+          </Select>
+
+          <Input
+            id="amount-value-filter"
+            label="Amount value"
+            type="number"
+            step="0.01"
+            placeholder="e.g. 100.00"
+            value={filters.amountValue ?? ''}
+            disabled={!filters.amountOperator}
+            onChange={(event) => {
+              const value = event.target.value;
+              setFilters((prev) => ({
+                ...prev,
+                amountValue: value ? Number(value) : undefined,
+                offset: 0,
+              }));
+            }}
+          />
 
           <div className="field transactions-filters-transfers">
             <span className="field-label">Transfers</span>
