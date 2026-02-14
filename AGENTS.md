@@ -5,7 +5,7 @@ This file is the complete frontend operator map.
 A new agent should be able to understand runtime behavior, API usage, cache invalidation, and change paths without additional discovery.
 
 ## Repo Identity
-- Path: `/Users/petergelgor/Documents/projects/budgeting_app/frontend`
+- Path: `frontend` (repository root)
 - Git repo: yes (independent from backend repo)
 - App type: React + Vite + TypeScript SPA
 
