@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate } from '@domain/format';
+import { buildTransactionsPath } from '@features/transactions/transactionRouteFilters';
 import {
   deleteRecurringPattern,
   detectRecurringPatterns,
@@ -15,6 +17,7 @@ import { EmptyState } from '@shared/ui/EmptyState';
 
 export function RecurringPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const patternsQuery = useQuery({
     queryKey: queryKeys.recurring.all(),
@@ -89,7 +92,24 @@ export function RecurringPage() {
             </thead>
             <tbody>
               {patterns.map((pattern) => (
-                <tr key={pattern.id}>
+                <tr
+                  key={pattern.id}
+                  className="table-clickable-row"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() =>
+                    navigate(buildTransactionsPath({ merchantQuery: pattern.merchantPattern?.trim() || pattern.name }))
+                  }
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) {
+                      return;
+                    }
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(buildTransactionsPath({ merchantQuery: pattern.merchantPattern?.trim() || pattern.name }));
+                    }
+                  }}
+                >
                   <td>{pattern.name}</td>
                   <td className="number">{formatCurrency(pattern.expectedAmount)}</td>
                   <td>{pattern.frequency}</td>
@@ -98,7 +118,10 @@ export function RecurringPage() {
                   <td>
                     <Button
                       variant={pattern.active ? 'primary' : 'ghost'}
-                      onClick={() => toggleMutation.mutate({ id: pattern.id, active: !pattern.active })}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleMutation.mutate({ id: pattern.id, active: !pattern.active });
+                      }}
                       disabled={toggleMutation.isPending}
                     >
                       {pattern.active ? 'Active' : 'Inactive'}
@@ -107,7 +130,10 @@ export function RecurringPage() {
                   <td>
                     <Button
                       variant="danger"
-                      onClick={() => deleteMutation.mutate(pattern.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteMutation.mutate(pattern.id);
+                      }}
                       disabled={deleteMutation.isPending}
                     >
                       Delete
@@ -137,7 +163,19 @@ export function RecurringPage() {
             </thead>
             <tbody>
               {upcoming.map((bill) => (
-                <tr key={bill.patternId}>
+                <tr
+                  key={bill.patternId}
+                  className="table-clickable-row"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(buildTransactionsPath({ merchantQuery: bill.name }))}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(buildTransactionsPath({ merchantQuery: bill.name }));
+                    }
+                  }}
+                >
                   <td>{bill.name}</td>
                   <td className="number">{formatCurrency(bill.expectedAmount)}</td>
                   <td>{formatDate(bill.dueDate)}</td>

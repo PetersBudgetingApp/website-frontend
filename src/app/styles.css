@@ -186,6 +186,21 @@ a {
   min-width: 0;
 }
 
+.card-clickable {
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.card-clickable:hover {
+  border-color: #b7c9e3;
+}
+
+.card-clickable:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-color: #9fbce4;
+}
+
 .card-header {
   display: flex;
   align-items: center;
@@ -436,6 +451,19 @@ textarea {
   font-size: 0.85rem;
   color: var(--text-soft);
   font-weight: 700;
+}
+
+.table-clickable-row {
+  cursor: pointer;
+}
+
+.table-clickable-row:hover td {
+  background: #f6f9ff;
+}
+
+.table-clickable-row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 .transactions-list {
@@ -1041,6 +1069,10 @@ textarea {
   fill: currentColor;
   stroke: #fff;
   stroke-width: 1.5;
+}
+
+.trend-month-target {
+  cursor: pointer;
 }
 
 .trend-legend {

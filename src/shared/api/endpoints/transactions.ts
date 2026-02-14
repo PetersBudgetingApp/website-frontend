@@ -57,6 +57,7 @@ export async function getTransactions(filters: TransactionFilters) {
       startDate: filters.startDate,
       endDate: filters.endDate,
       descriptionQuery: filters.descriptionQuery,
+      merchantQuery: filters.merchantQuery,
       categoryId: filters.categoryId,
       uncategorized: filters.uncategorized,
       accountId: filters.accountId,

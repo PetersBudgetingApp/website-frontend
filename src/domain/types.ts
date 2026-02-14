@@ -51,6 +51,7 @@ export interface TransactionFilters {
   startDate?: string;
   endDate?: string;
   descriptionQuery?: string;
+  merchantQuery?: string;
   categoryId?: number;
   uncategorized?: boolean;
   accountId?: number;

@@ -18,6 +18,7 @@ import { BudgetInsightsPanel } from '@features/dashboard/components/BudgetInsigh
 import { IncomeVsSpendingChart } from '@features/dashboard/components/IncomeVsSpendingChart';
 import { NetWorthBreakdownCard } from '@features/dashboard/components/NetWorthBreakdownCard';
 import { SummaryCards } from '@features/dashboard/components/SummaryCards';
+import { buildTransactionsPath } from '@features/transactions/transactionRouteFilters';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -165,14 +166,19 @@ export function DashboardPage() {
   return (
     <section className="page">
       <h2>Dashboard</h2>
-      <IncomeVsSpendingChart trends={trendsQuery.data?.trends ?? []} isLoading={trendsQuery.isLoading} isError={trendsQuery.isError} />
+      <IncomeVsSpendingChart
+        trends={trendsQuery.data?.trends ?? []}
+        isLoading={trendsQuery.isLoading}
+        isError={trendsQuery.isError}
+        onMonthSelect={(selectedMonth) => navigate(buildTransactionsPath({ month: selectedMonth }))}
+      />
       <NetWorthBreakdownCard summary={accountSummaryQuery.data} />
       <SummaryCards
         income={cashFlowQuery.data.totalIncome}
         expenses={cashFlowQuery.data.totalExpenses}
         savingsRate={cashFlowQuery.data.savingsRate}
-        onIncomeClick={() => navigate(`${appRoutes.transactions}?amountOperator=gt&amountValue=0`)}
-        onExpensesClick={() => navigate(`${appRoutes.transactions}?amountOperator=lt&amountValue=0`)}
+        onIncomeClick={() => navigate(buildTransactionsPath({ amountOperator: 'gt', amountValue: 0 }))}
+        onExpensesClick={() => navigate(buildTransactionsPath({ amountOperator: 'lt', amountValue: 0 }))}
       />
 
       <div className="grid-cards dashboard-summary-grid">
@@ -191,7 +197,33 @@ export function DashboardPage() {
                 </thead>
                 <tbody>
                   {spendingQuery.data.categories.slice(0, 8).map((item) => (
-                    <tr key={`${item.categoryName}-${item.categoryId ?? 'none'}`}>
+                    <tr
+                      key={`${item.categoryName}-${item.categoryId ?? 'none'}`}
+                      className="table-clickable-row"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        navigate(
+                          buildTransactionsPath({
+                            month,
+                            categoryId: item.categoryId ?? undefined,
+                            uncategorized: item.categoryId === null || item.categoryId === undefined,
+                          }),
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          navigate(
+                            buildTransactionsPath({
+                              month,
+                              categoryId: item.categoryId ?? undefined,
+                              uncategorized: item.categoryId === null || item.categoryId === undefined,
+                            }),
+                          );
+                        }
+                      }}
+                    >
                       <td>{item.categoryName}</td>
                       <td className="number">{formatCurrency(item.amount)}</td>
                       <td className="number">{item.percentage.toFixed(1)}%</td>
@@ -203,7 +235,7 @@ export function DashboardPage() {
           )}
         </Card>
 
-        <Card title="Budget Progress">
+        <Card title="Budget Progress" onClick={() => navigate(appRoutes.budgets)}>
           <div className="form-grid">
             <div>
               <p className="subtle">Targeted Spend</p>

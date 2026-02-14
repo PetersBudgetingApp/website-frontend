@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { IncomeVsSpendingChart } from '@features/dashboard/components/IncomeVsSpendingChart';
 
 const sampleTrends = [
@@ -65,5 +65,16 @@ describe('IncomeVsSpendingChart', () => {
 
     fireEvent.mouseLeave(svg);
     expect(document.querySelector('.trend-hover-group')).not.toBeInTheDocument();
+  });
+
+  it('calls month selection callback when a month label is clicked', async () => {
+    const user = userEvent.setup();
+    const onMonthSelect = vi.fn();
+
+    render(<IncomeVsSpendingChart trends={sampleTrends} isLoading={false} isError={false} onMonthSelect={onMonthSelect} />);
+
+    await user.click(screen.getByText('Nov 25'));
+
+    expect(onMonthSelect).toHaveBeenCalledWith('2025-11');
   });
 });

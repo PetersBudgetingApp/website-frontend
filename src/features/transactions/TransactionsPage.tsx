@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { defaultTransactionFilters } from '@domain/transactions';
 import { formatDate } from '@domain/format';
 import { getAccounts } from '@shared/api/endpoints/accounts';
 import {
@@ -32,6 +31,7 @@ import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { TransactionRow } from '@features/transactions/components/TransactionRow';
 import { TransferPairRow } from '@features/transactions/components/TransferPairRow';
+import { getInitialFiltersFromSearchParams } from '@features/transactions/transactionRouteFilters';
 
 const emptyRuleForm = {
   name: '',
@@ -99,24 +99,6 @@ const emptyManualTransactionForm = () => ({
   pending: false,
   excludeFromTotals: false,
 });
-
-function getInitialFiltersFromSearchParams(searchParams: URLSearchParams): TransactionFilters {
-  const baseFilters = defaultTransactionFilters();
-  const amountOperator = searchParams.get('amountOperator');
-  const amountValue = searchParams.get('amountValue');
-
-  if (amountOperator && (amountOperator === 'eq' || amountOperator === 'gt' || amountOperator === 'lt')) {
-    baseFilters.amountOperator = amountOperator;
-    if (amountValue !== null) {
-      const parsedValue = Number(amountValue);
-      if (Number.isFinite(parsedValue)) {
-        baseFilters.amountValue = parsedValue;
-      }
-    }
-  }
-
-  return baseFilters;
-}
 
 export function TransactionsPage() {
   const queryClient = useQueryClient();
@@ -497,6 +479,16 @@ export function TransactionsPage() {
             value={filters.descriptionQuery ?? ''}
             onChange={(event) =>
               setFilters((prev) => ({ ...prev, descriptionQuery: event.target.value || undefined, offset: 0 }))
+            }
+          />
+
+          <Input
+            id="merchant-filter"
+            label="Merchant"
+            placeholder="Search payee, description, or memo"
+            value={filters.merchantQuery ?? ''}
+            onChange={(event) =>
+              setFilters((prev) => ({ ...prev, merchantQuery: event.target.value || undefined, offset: 0 }))
             }
           />
 

@@ -190,6 +190,9 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Budget summary combines backend spending with persisted monthly budget targets from `/budgets`.
 - Budget insights section provides per-category recommended budget alignment (weighted toward recent months with 50%/25%/12.5%... normalized weighting), displays `Current Budget`, `Recommended Budget`, `Average Spend`, and `Current Spend`, and supports one-click apply that upserts current month targets via `/budgets/{month}` directly from Dashboard.
 - Each budget insight card is clickable and routes to `/dashboard/budget-insights/:categoryId`, where category-specific monthly spend trend (with tooltip + average benchmark line) and merchant-level rollup metrics are derived from paged `/transactions` reads filtered by category.
+- Income vs Spending chart points are clickable and route to `/transactions` with the clicked month prefilled as `startDate`/`endDate`.
+- Spending by Category rows are clickable and route to `/transactions` filtered by current month + selected category (or uncategorized when applicable).
+- Budget Progress card is clickable and routes to `/budgets`.
 
 ### Connections (`src/features/connections/ConnectionsPage.tsx`)
 - Reads:
@@ -210,6 +213,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - flat categories
   - transaction list by filters
     - includes `descriptionQuery` search (case-insensitive, ignores punctuation/special characters)
+    - includes `merchantQuery` search across description/payee/memo (case-insensitive, ignores punctuation/special characters)
   - transaction coverage summary
   - transfer pairs
 - Mutations:
@@ -290,6 +294,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Reads:
   - recurring patterns
   - upcoming bills
+- UX behavior:
+  - recurring pattern rows and upcoming bill rows are clickable and route to `/transactions` filtered by merchant name/pattern.
 - Mutations:
   - detect recurring patterns
   - toggle pattern active/inactive

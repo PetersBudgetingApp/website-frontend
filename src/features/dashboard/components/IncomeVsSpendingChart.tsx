@@ -10,6 +10,7 @@ interface IncomeVsSpendingChartProps {
   trends: TrendDto['trends'];
   isLoading: boolean;
   isError: boolean;
+  onMonthSelect?: (month: string) => void;
 }
 
 interface ChartPoint {
@@ -62,10 +63,11 @@ function buildLinePath(points: Array<{ x: number; y: number }>): string {
     .join(' ');
 }
 
-export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSpendingChartProps) {
+export function IncomeVsSpendingChart({ trends, isLoading, isError, onMonthSelect }: IncomeVsSpendingChartProps) {
   const [mode, setMode] = useState<ChartMode>('bar');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const isInteractive = typeof onMonthSelect === 'function';
 
   const chartData = useMemo(() => {
     let runningIncome = 0;
@@ -200,7 +202,10 @@ export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSp
 
     return (
       <div className="chart-content">
-        <p className="subtle">{mode === 'bar' ? 'Monthly income and spending totals' : 'Cumulative income and spending totals'}</p>
+        <p className="subtle">
+          {mode === 'bar' ? 'Monthly income and spending totals' : 'Cumulative income and spending totals'}
+          {isInteractive ? ' (click a month to open Transactions).' : ''}
+        </p>
         <svg
           ref={svgRef}
           className="trend-chart"
@@ -233,7 +238,24 @@ export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSp
                 const xLabel = margins.left + groupWidth * (index + 0.5);
 
                 return (
-                  <g key={point.month}>
+                  <g
+                    key={point.month}
+                    className={isInteractive ? 'trend-month-target' : undefined}
+                    role={isInteractive ? 'button' : undefined}
+                    tabIndex={isInteractive ? 0 : undefined}
+                    aria-label={isInteractive ? `Open transactions for ${point.label}` : undefined}
+                    onClick={isInteractive ? () => onMonthSelect?.(point.month) : undefined}
+                    onKeyDown={
+                      isInteractive
+                        ? (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              onMonthSelect?.(point.month);
+                            }
+                          }
+                        : undefined
+                    }
+                  >
                     <rect
                       className="trend-bar trend-bar-income"
                       x={clusterStart}
@@ -264,7 +286,24 @@ export function IncomeVsSpendingChart({ trends, isLoading, isError }: IncomeVsSp
                   {chartData.map((point, index) => {
                     const x = xForLineIndex(index);
                     return (
-                      <g key={point.month}>
+                      <g
+                        key={point.month}
+                        className={isInteractive ? 'trend-month-target' : undefined}
+                        role={isInteractive ? 'button' : undefined}
+                        tabIndex={isInteractive ? 0 : undefined}
+                        aria-label={isInteractive ? `Open transactions for ${point.label}` : undefined}
+                        onClick={isInteractive ? () => onMonthSelect?.(point.month) : undefined}
+                        onKeyDown={
+                          isInteractive
+                            ? (event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  onMonthSelect?.(point.month);
+                                }
+                              }
+                            : undefined
+                        }
+                      >
                         <circle className="trend-point trend-point-income" cx={x} cy={yForValue(point.cumulativeIncome)} r={4} />
                         <circle className="trend-point trend-point-expense" cx={x} cy={yForValue(point.cumulativeExpenses)} r={4} />
                         <text className="trend-axis-label" x={x} y={plotBottom + 17} textAnchor="middle">

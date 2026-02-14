@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { appRoutes } from '@app/routes';
 import { formatCurrency, formatMonth, getCurrentMonthKey } from '@domain/format';
@@ -18,6 +18,7 @@ import {
 } from '@features/dashboard/budgetInsightDetailData';
 import { toMtdNarrative } from '@features/dashboard/budgetInsightsText';
 import { BudgetCategorySpendChart } from '@features/dashboard/components/BudgetCategorySpendChart';
+import { buildTransactionsPath } from '@features/transactions/transactionRouteFilters';
 import { getBudgetInsights } from '@shared/api/endpoints/analytics';
 import { getCategories } from '@shared/api/endpoints/categories';
 import { getTransactionCoverage, getTransactions, type TransactionDto } from '@shared/api/endpoints/transactions';
@@ -82,6 +83,7 @@ export function BudgetInsightDetailPage() {
   const { categoryId: categoryIdRaw } = useParams<{ categoryId: string }>();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const fromRoute = (location.state as { from?: string } | null)?.from;
   const backTo = fromRoute && BACK_TARGETS[fromRoute] ? fromRoute : appRoutes.dashboard;
   const backLabel = BACK_TARGETS[backTo] ?? 'Dashboard';
@@ -321,7 +323,19 @@ export function BudgetInsightDetailPage() {
               </thead>
               <tbody>
                 {sortedMerchantRows.map((row) => (
-                  <tr key={row.merchantName}>
+                  <tr
+                    key={row.merchantName}
+                    className="table-clickable-row"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(buildTransactionsPath({ merchantQuery: row.merchantName }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(buildTransactionsPath({ merchantQuery: row.merchantName }));
+                      }
+                    }}
+                  >
                     <td>{row.merchantName}</td>
                     <td className="number">{row.currentMonthTransactionCount}</td>
                     <td className="number">{formatCurrency(row.currentMonthSpend)}</td>
