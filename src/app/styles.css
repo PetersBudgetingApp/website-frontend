@@ -1651,3 +1651,85 @@ textarea {
     transform: rotate(360deg);
   }
 }
+
+/* ── Sync status banners & pills (Connections page) ── */
+
+.sync-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.85rem;
+}
+
+.sync-banner--info {
+  background: #edf4ff;
+  color: var(--brand);
+}
+
+.sync-banner--success {
+  background: #e8f8ef;
+  color: var(--success);
+}
+
+.sync-banner--error {
+  background: #fceced;
+  color: var(--danger);
+}
+
+.sync-banner-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0 0.15rem;
+}
+
+.sync-banner-dismiss:hover {
+  opacity: 1;
+}
+
+.sync-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sync-status-pill--syncing {
+  background: #edf4ff;
+  color: var(--brand);
+}
+
+.sync-status-pill--success {
+  background: #e8f8ef;
+  color: var(--success);
+}
+
+.sync-status-pill--failed {
+  background: #fceced;
+  color: var(--danger);
+}
+
+.sync-status-pill--pending,
+.sync-status-pill--in_progress {
+  background: #fff7e6;
+  color: #b37400;
+}
+
+.sync-status-pill .spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-width: 1.5px;
+}

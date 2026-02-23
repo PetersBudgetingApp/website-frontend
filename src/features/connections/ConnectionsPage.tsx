@@ -18,8 +18,10 @@ const setupSchema = z.object({
 
 type SetupForm = z.infer<typeof setupSchema>;
 
+type SyncStatus = { state: 'syncing' | 'success' | 'error'; connectionId: number; message?: string };
+
 export function ConnectionsPage() {
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const queryClient = useQueryClient();
 
   const setupForm = useForm<SetupForm>({
@@ -41,27 +43,35 @@ export function ConnectionsPage() {
 
   const setupMutation = useMutation({
     mutationFn: (values: SetupForm) => setupSimpleFinConnection(values.setupToken),
-    onSuccess: () => {
+    onSuccess: (data) => {
       setupForm.reset();
       queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
+      syncMutation.mutate(data.id);
     },
   });
 
   const syncMutation = useMutation({
-    mutationFn: syncConnection,
-    onSuccess: (result) => {
-      setSyncMessage(result.message);
+    mutationFn: (id: number) => {
+      setSyncStatus({ state: 'syncing', connectionId: id });
+      return syncConnection(id);
+    },
+    onSuccess: (result, id) => {
+      setSyncStatus({ state: 'success', connectionId: id, message: result.message });
       queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
+    },
+    onError: (_err, id) => {
+      setSyncStatus({ state: 'error', connectionId: id, message: 'Sync failed. Please try again.' });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteConnection,
     onSuccess: () => {
+      setSyncStatus(null);
       queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
@@ -113,7 +123,23 @@ export function ConnectionsPage() {
       </Card>
 
       <Card title="Linked Institutions">
-        {syncMessage && <p>{syncMessage}</p>}
+        {syncStatus?.state === 'syncing' && (
+          <div className="sync-banner sync-banner--info">
+            <span className="spinner" /> Syncing transactions… This may take a moment.
+          </div>
+        )}
+        {syncStatus?.state === 'success' && (
+          <div className="sync-banner sync-banner--success">
+            ✓ {syncStatus.message}
+            <button className="sync-banner-dismiss" onClick={() => setSyncStatus(null)}>✕</button>
+          </div>
+        )}
+        {syncStatus?.state === 'error' && (
+          <div className="sync-banner sync-banner--error">
+            ✗ {syncStatus.message}
+            <button className="sync-banner-dismiss" onClick={() => setSyncStatus(null)}>✕</button>
+          </div>
+        )}
 
         {connectionsQuery.data && connectionsQuery.data.length > 0 ? (
           <table className="table">
@@ -127,28 +153,47 @@ export function ConnectionsPage() {
               </tr>
             </thead>
             <tbody>
-              {connectionsQuery.data.map((connection) => (
+              {connectionsQuery.data.map((connection) => {
+                const isSyncingThis = syncStatus?.state === 'syncing' && syncStatus.connectionId === connection.id;
+                return (
                 <tr key={connection.id}>
                   <td>{connection.institutionName ?? 'Unknown Institution'}</td>
-                  <td>{connection.syncStatus}</td>
+                  <td>
+                    {isSyncingThis ? (
+                      <span className="sync-status-pill sync-status-pill--syncing">
+                        <span className="spinner" /> Syncing
+                      </span>
+                    ) : (
+                      <span className={`sync-status-pill sync-status-pill--${connection.syncStatus.toLowerCase()}`}>
+                        {connection.syncStatus === 'SUCCESS' && '✓ '}
+                        {connection.syncStatus === 'FAILED' && '✗ '}
+                        {connection.syncStatus}
+                      </span>
+                    )}
+                  </td>
                   <td>{connection.accountCount}</td>
                   <td>{formatDate(connection.lastSyncAt)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      <Button variant="secondary" onClick={() => syncMutation.mutate(connection.id)} disabled={syncMutation.isPending}>
-                        Sync
+                      <Button
+                        variant="secondary"
+                        onClick={() => syncMutation.mutate(connection.id)}
+                        disabled={syncMutation.isPending}
+                      >
+                        {isSyncingThis ? 'Syncing…' : 'Sync'}
                       </Button>
                       <Button
                         variant="danger"
                         onClick={() => deleteMutation.mutate(connection.id)}
-                        disabled={deleteMutation.isPending}
+                        disabled={deleteMutation.isPending || isSyncingThis}
                       >
                         Remove
                       </Button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         ) : (
