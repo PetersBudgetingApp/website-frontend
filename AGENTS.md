@@ -248,9 +248,11 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Filters card UX:
   - filter inputs use a responsive grid (desktop 6 columns, medium 3 columns, tablet 2 columns, mobile 1 column)
   - transfer toggle spans full row on medium/tablet/mobile to avoid label/input compression
+  - category dropdowns list `Uncategorized` first (after `All categories` in filters)
 - Manual entry modal UX:
   - Unified Transactions card includes `Add transaction` button
   - popup form captures account/date/amount/description plus optional payee/memo/category/notes/pending/exclude flags
+  - category dropdown lists `Uncategorized` first and blank selection means auto-assign with backend fallback to `Uncategorized`
   - form supports escape/overlay close and shows API validation errors inline
 - Invalidation on create:
   - `transactions.all`, `transactions.coverage`, `analytics.all`
@@ -268,6 +270,8 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - UX behavior:
   - clicking a category name opens an inline modal-like details panel directly under that category row in the tree (no separate bottom-of-page explorer section)
   - rule editor supports chained filters with `AND`/`OR` across description/payee/memo/account/amount
+  - system `Uncategorized` is pinned to the bottom of the tree, has no `Edit`/`Remove` actions, cannot be selected as a parent, and remains the only `UNCATEGORIZED` type category
+  - category assignment dropdowns in rules list `Uncategorized` first
 - Mutations:
   - create category
   - update category
@@ -288,6 +292,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - filtered transactions for uncategorized warning
 - UX behavior:
   - top-level toggle switches between `Actual Budgets` (target editing + variance table + uncategorized warning) and `Insights` (shared budget insights panel with apply recommendation + detail navigation).
+  - budget editor and insight cards include system `Uncategorized` as a budgetable category.
 - Writes:
   - upsert monthly targets (`PUT /budgets/{month}`)
   - delete category target (`DELETE /budgets/{month}/categories/{categoryId}`)

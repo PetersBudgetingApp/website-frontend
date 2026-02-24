@@ -6,7 +6,7 @@ type CategoryNode = {
   name: string;
   icon?: string | null;
   color?: string | null;
-  categoryType: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+  categoryType: 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'UNCATEGORIZED';
   system: boolean;
   children?: CategoryNode[] | null;
 };
@@ -60,7 +60,7 @@ export const categorySchema: z.ZodType<CategoryNode> = z.lazy(() =>
     name: z.string(),
     icon: z.string().nullable().optional(),
     color: z.string().nullable().optional(),
-    categoryType: z.enum(['INCOME', 'EXPENSE', 'TRANSFER']),
+    categoryType: z.enum(['INCOME', 'EXPENSE', 'TRANSFER', 'UNCATEGORIZED']),
     system: z.boolean(),
     children: z.array(categorySchema).nullable().optional(),
   }),

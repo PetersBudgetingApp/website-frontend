@@ -6,6 +6,8 @@ interface CategoryTreeProps {
   categories: CategoryDto[];
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  canEdit?: (category: CategoryDto) => boolean;
+  canDelete?: (category: CategoryDto) => boolean;
   onSelect?: (id: number) => void;
   selectedId?: number | null;
   renderDetails?: (category: CategoryDto) => ReactNode;
@@ -13,7 +15,7 @@ interface CategoryTreeProps {
 
 function renderNodes(
   categories: CategoryDto[],
-  handlers: Pick<CategoryTreeProps, 'onEdit' | 'onDelete' | 'onSelect' | 'selectedId' | 'renderDetails'>,
+  handlers: Pick<CategoryTreeProps, 'onEdit' | 'onDelete' | 'canEdit' | 'canDelete' | 'onSelect' | 'selectedId' | 'renderDetails'>,
   depth = 0,
 ): ReactNode {
   return categories.map((category) => (
@@ -44,14 +46,20 @@ function renderNodes(
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          <Button type="button" variant="ghost" onClick={() => handlers.onEdit(category.id)}>
-            Edit
-          </Button>
-          <Button type="button" variant="danger" onClick={() => handlers.onDelete(category.id)}>
-            {category.system ? 'Remove' : 'Delete'}
-          </Button>
-        </div>
+        {(handlers.canEdit?.(category) ?? true) || (handlers.canDelete?.(category) ?? true) ? (
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            {(handlers.canEdit?.(category) ?? true) && (
+              <Button type="button" variant="ghost" onClick={() => handlers.onEdit(category.id)}>
+                Edit
+              </Button>
+            )}
+            {(handlers.canDelete?.(category) ?? true) && (
+              <Button type="button" variant="danger" onClick={() => handlers.onDelete(category.id)}>
+                {category.system ? 'Remove' : 'Delete'}
+              </Button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {handlers.selectedId === category.id && handlers.renderDetails && (
@@ -74,6 +82,15 @@ function renderNodes(
   ));
 }
 
-export function CategoryTree({ categories, onEdit, onDelete, onSelect, selectedId = null, renderDetails }: CategoryTreeProps) {
-  return <div>{renderNodes(categories, { onEdit, onDelete, onSelect, selectedId, renderDetails })}</div>;
+export function CategoryTree({
+  categories,
+  onEdit,
+  onDelete,
+  canEdit,
+  canDelete,
+  onSelect,
+  selectedId = null,
+  renderDetails,
+}: CategoryTreeProps) {
+  return <div>{renderNodes(categories, { onEdit, onDelete, canEdit, canDelete, onSelect, selectedId, renderDetails })}</div>;
 }

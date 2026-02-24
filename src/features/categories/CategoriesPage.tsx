@@ -25,6 +25,13 @@ import { EmptyState } from '@shared/ui/EmptyState';
 import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { CategoryTree } from '@features/categories/components/CategoryTree';
+import {
+  isUncategorizedCategory,
+  sortCategoriesWithUncategorizedFirst,
+  sortCategoriesWithUncategorizedLast,
+} from '@shared/utils/categories';
+
+type EditableCategoryType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
 const emptyCategoryForm = {
   id: null as number | null,
@@ -32,7 +39,7 @@ const emptyCategoryForm = {
   parentId: '',
   icon: '',
   color: '',
-  categoryType: 'EXPENSE' as 'INCOME' | 'EXPENSE' | 'TRANSFER',
+  categoryType: 'EXPENSE' as EditableCategoryType,
 };
 
 const emptyRuleForm = {
@@ -116,6 +123,13 @@ function effectiveRuleConditions(rule: {
     return [];
   }
   return [{ field: rule.matchField, patternType: rule.patternType, value: rule.pattern }];
+}
+
+function toEditableCategoryType(categoryType: CategoryDto['categoryType']): EditableCategoryType {
+  if (categoryType === 'UNCATEGORIZED') {
+    return 'EXPENSE';
+  }
+  return categoryType;
 }
 
 export function CategoriesPage() {
@@ -226,6 +240,11 @@ export function CategoriesPage() {
   });
 
   const allCategories = categoriesFlatQuery.data ?? [];
+  const categoryOptions = useMemo(() => sortCategoriesWithUncategorizedFirst(allCategories), [allCategories]);
+  const categoryTree = useMemo(
+    () => sortCategoriesWithUncategorizedLast(categoriesTreeQuery.data ?? []),
+    [categoriesTreeQuery.data],
+  );
 
   const categoryNameById = useMemo(
     () =>
@@ -239,7 +258,7 @@ export function CategoriesPage() {
 
   const loadCategoryForEdit = (id: number) => {
     const target = allCategories.find((item) => item.id === id);
-    if (!target) {
+    if (!target || isUncategorizedCategory(target)) {
       return;
     }
 
@@ -249,7 +268,7 @@ export function CategoriesPage() {
       parentId: target.parentId ? String(target.parentId) : '',
       icon: target.icon ?? '',
       color: target.color ?? '',
-      categoryType: target.categoryType,
+      categoryType: toEditableCategoryType(target.categoryType),
     });
   };
 
@@ -378,7 +397,7 @@ export function CategoriesPage() {
           onChange={(event) => setRuleForm((prev) => ({ ...prev, categoryId: event.target.value }))}
         >
           <option value="">Select category</option>
-          {allCategories.map((category) => (
+          {categoryOptions.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
             </option>
@@ -633,7 +652,7 @@ export function CategoriesPage() {
             onChange={(event) =>
               setCategoryForm((prev) => ({
                 ...prev,
-                categoryType: event.target.value as 'INCOME' | 'EXPENSE' | 'TRANSFER',
+                categoryType: event.target.value as EditableCategoryType,
               }))
             }
           >
@@ -649,8 +668,8 @@ export function CategoriesPage() {
             onChange={(event) => setCategoryForm((prev) => ({ ...prev, parentId: event.target.value }))}
           >
             <option value="">No parent</option>
-            {allCategories
-              .filter((category) => category.id !== categoryForm.id)
+            {categoryOptions
+              .filter((category) => category.id !== categoryForm.id && !isUncategorizedCategory(category))
               .map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -690,11 +709,13 @@ export function CategoriesPage() {
       </Card>
 
       <Card title="Category Tree">
-        {categoriesTreeQuery.data && categoriesTreeQuery.data.length > 0 ? (
+        {categoryTree.length > 0 ? (
           <CategoryTree
-            categories={categoriesTreeQuery.data}
+            categories={categoryTree}
             onEdit={loadCategoryForEdit}
             onDelete={(id) => deleteCategoryMutation.mutate(id)}
+            canEdit={(category) => !isUncategorizedCategory(category)}
+            canDelete={(category) => !isUncategorizedCategory(category)}
             onSelect={inspectCategory}
             selectedId={selectedCategoryId}
             renderDetails={renderCategoryRuleDetails}

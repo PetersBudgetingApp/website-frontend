@@ -32,6 +32,7 @@ import { Select } from '@shared/ui/Select';
 import { TransactionRow } from '@features/transactions/components/TransactionRow';
 import { TransferPairRow } from '@features/transactions/components/TransferPairRow';
 import { getInitialFiltersFromSearchParams } from '@features/transactions/transactionRouteFilters';
+import { findUncategorizedCategory, sortCategoriesWithUncategorizedFirst } from '@shared/utils/categories';
 
 const emptyRuleForm = {
   name: '',
@@ -75,7 +76,6 @@ function allowedPatternTypes(field: RuleMatchField): RulePatternType[] {
   return ['CONTAINS', 'STARTS_WITH', 'ENDS_WITH', 'EXACT', 'REGEX'];
 }
 
-const UNCATEGORIZED_FILTER_VALUE = '__uncategorized__';
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
 
 function getTodayLocalDateString() {
@@ -210,11 +210,11 @@ export function TransactionsPage() {
     },
   });
 
-  const categoryOptions = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
-  const categoryFilterOptions = useMemo(
-    () => categoryOptions.filter((category) => !(category.system && category.name.toLowerCase() === 'uncategorized')),
-    [categoryOptions],
+  const categoryOptions = useMemo(
+    () => sortCategoriesWithUncategorizedFirst(categoriesQuery.data ?? []),
+    [categoriesQuery.data],
   );
+  const uncategorizedCategory = useMemo(() => findUncategorizedCategory(categoryOptions), [categoryOptions]);
   const transferPairs = transfersQuery.data ?? [];
   const transferPairCount = transferPairs.length;
   const pagedTransferPairs = useMemo(
@@ -323,7 +323,11 @@ export function TransactionsPage() {
         { field: 'ACCOUNT', patternType: 'EQUALS', value: accountId },
         { field: 'AMOUNT', patternType: 'EQUALS', value: amount },
       ],
-      categoryId: transaction.category?.id ? String(transaction.category.id) : '',
+      categoryId: transaction.category?.id
+        ? String(transaction.category.id)
+        : uncategorizedCategory
+          ? String(uncategorizedCategory.id)
+          : '',
       source: transaction.description ?? transaction.payee ?? transaction.memo ?? 'Selected transaction',
     });
   };
@@ -511,23 +515,19 @@ export function TransactionsPage() {
           <Select
             id="category-filter"
             label="Category"
-            value={filters.uncategorized ? UNCATEGORIZED_FILTER_VALUE : filters.categoryId ?? ''}
+            value={filters.categoryId ?? (filters.uncategorized ? (uncategorizedCategory?.id ?? '') : '')}
             onChange={(event) => {
               const value = event.target.value;
               setFilters((prev) => {
                 if (value === '') {
                   return { ...prev, categoryId: undefined, uncategorized: undefined, offset: 0 };
                 }
-                if (value === UNCATEGORIZED_FILTER_VALUE) {
-                  return { ...prev, categoryId: undefined, uncategorized: true, offset: 0 };
-                }
                 return { ...prev, categoryId: Number(value), uncategorized: undefined, offset: 0 };
               });
             }}
           >
             <option value="">All categories</option>
-            <option value={UNCATEGORIZED_FILTER_VALUE}>Uncategorized</option>
-            {categoryFilterOptions.map((category) => (
+            {categoryOptions.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
@@ -818,8 +818,8 @@ export function TransactionsPage() {
                     onChange={(event) => setManualForm((prev) => ({ ...prev, categoryId: event.target.value }))}
                     disabled={createTransactionMutation.isPending}
                   >
-                    <option value="">Uncategorized (auto-rule match)</option>
-                    {categoryFilterOptions.map((category) => (
+                    <option value="">Auto-assign (falls back to Uncategorized)</option>
+                    {categoryOptions.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>

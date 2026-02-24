@@ -1,4 +1,4 @@
-export type CategoryType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+export type CategoryType = 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'UNCATEGORIZED';
 export type AccountType = 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'LOAN' | 'INVESTMENT' | 'OTHER';
 export type NetWorthCategory = 'BANK_ACCOUNT' | 'INVESTMENT' | 'LIABILITY';
 export type AmountFilterOperator = 'eq' | 'gt' | 'lt';

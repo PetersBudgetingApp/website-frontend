@@ -16,6 +16,7 @@ import { monthToDateRange } from '@shared/utils/date';
 import { getBudgetPerformance } from '@features/budgets/budgetStore';
 import { BudgetEditorTable } from '@features/budgets/components/BudgetEditorTable';
 import { BudgetInsightsPanel } from '@features/dashboard/components/BudgetInsightsPanel';
+import { findUncategorizedCategory, isUncategorizedCategory } from '@shared/utils/categories';
 
 type BudgetView = 'actual' | 'insights';
 
@@ -48,6 +49,11 @@ export function BudgetsPage() {
     queryFn: () => getCategories(true),
   });
 
+  const uncategorizedCategoryId = useMemo(
+    () => findUncategorizedCategory(categoriesQuery.data ?? [])?.id,
+    [categoriesQuery.data],
+  );
+
   const spendingQuery = useQuery({
     queryKey: queryKeys.analytics.spending(startDate, endDate),
     queryFn: () => getSpendingByCategory(startDate, endDate),
@@ -60,9 +66,12 @@ export function BudgetsPage() {
         includeTransfers: false,
         startDate,
         endDate,
+        categoryId: uncategorizedCategoryId,
+        uncategorized: uncategorizedCategoryId === undefined ? true : undefined,
         limit: 500,
         offset: 0,
-    }),
+      }),
+    enabled: categoriesQuery.isSuccess,
   });
 
   const budgetMonthQuery = useQuery({
@@ -75,8 +84,11 @@ export function BudgetsPage() {
     queryFn: () => getBudgetInsights(month, 6),
   });
 
-  const expenseCategories = useMemo(
-    () => (categoriesQuery.data ?? []).filter((item) => item.categoryType === 'EXPENSE'),
+  const budgetableCategories = useMemo(
+    () =>
+      (categoriesQuery.data ?? []).filter(
+        (item) => item.categoryType === 'EXPENSE' || isUncategorizedCategory(item),
+      ),
     [categoriesQuery.data],
   );
 
@@ -85,9 +97,9 @@ export function BudgetsPage() {
     [categoriesQuery.data],
   );
 
-  const expenseCategoryNameById = useMemo(
-    () => new Map(expenseCategories.map((category) => [category.id, category.name])),
-    [expenseCategories],
+  const budgetableCategoryNameById = useMemo(
+    () => new Map(budgetableCategories.map((category) => [category.id, category.name])),
+    [budgetableCategories],
   );
 
   const actualByCategory = useMemo(() => {
@@ -101,7 +113,7 @@ export function BudgetsPage() {
   }, [spendingQuery.data]);
 
   const uncategorizedCount = useMemo(
-    () => (uncategorizedQuery.data ?? []).filter((item) => item.amount < 0 && !item.category).length,
+    () => (uncategorizedQuery.data ?? []).filter((item) => item.amount < 0).length,
     [uncategorizedQuery.data],
   );
 
@@ -176,13 +188,13 @@ export function BudgetsPage() {
     targets.forEach((target) => {
       map[target.categoryId] = {
         categoryId: target.categoryId,
-        categoryName: expenseCategoryNameById.get(target.categoryId) ?? 'Unknown',
+        categoryName: budgetableCategoryNameById.get(target.categoryId) ?? 'Unknown',
         targetAmount: target.targetAmount,
         notes: target.notes ?? '',
       };
     });
     setTargetsByCategory(map);
-  }, [budgetMonthQuery.data, expenseCategoryNameById]);
+  }, [budgetMonthQuery.data, budgetableCategoryNameById]);
 
   const targetList = useMemo(
     () => Object.values(targetsByCategory).filter((target) => target.targetAmount > 0 || (target.notes ?? '').trim().length > 0),
@@ -190,12 +202,12 @@ export function BudgetsPage() {
   );
 
   const performance = useMemo(() => {
-    return getBudgetPerformance({
-      categories: expenseCategories.map((item) => ({ id: item.id, name: item.name })),
+      return getBudgetPerformance({
+      categories: budgetableCategories.map((item) => ({ id: item.id, name: item.name })),
       targets: targetList,
       actualByCategory,
     });
-  }, [expenseCategories, targetList, actualByCategory]);
+  }, [budgetableCategories, targetList, actualByCategory]);
 
   const saveTargets = () => {
     saveMutation.mutate(targetList);
@@ -265,14 +277,14 @@ export function BudgetsPage() {
               {saveMessage && <p className="subtle">{saveMessage}</p>}
             </div>
 
-            {expenseCategories.length > 0 ? (
+            {budgetableCategories.length > 0 ? (
               <BudgetEditorTable
-                categories={expenseCategories}
+                categories={budgetableCategories}
                 targetsByCategory={targetsByCategory}
                 actualByCategory={actualByCategory}
                 onDeleteTarget={deleteTarget}
                 onTargetChange={(categoryId, field, value) => {
-                  const categoryName = expenseCategories.find((item) => item.id === categoryId)?.name ?? 'Unknown';
+                  const categoryName = budgetableCategories.find((item) => item.id === categoryId)?.name ?? 'Unknown';
                   setTargetsByCategory((prev) => {
                     const base = prev[categoryId] ?? {
                       categoryId,
