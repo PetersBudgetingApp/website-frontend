@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAccountSummary } from '@shared/api/endpoints/accounts';
-import { deleteConnection, getConnections, setupSimpleFinConnection, syncConnection } from '@shared/api/endpoints/connections';
+import { deleteConnection, fullSyncConnection, getConnections, setupSimpleFinConnection, syncConnection } from '@shared/api/endpoints/connections';
 import { queryKeys } from '@shared/query/keys';
 import { Button } from '@shared/ui/Button';
 import { Card } from '@shared/ui/Card';
@@ -18,11 +18,23 @@ const setupSchema = z.object({
 
 type SetupForm = z.infer<typeof setupSchema>;
 
-type SyncStatus = { state: 'syncing' | 'success' | 'error'; connectionId: number; message?: string };
+type SyncMode = 'incremental' | 'full';
+type SyncAction = { connectionId: number; mode: SyncMode };
+type SyncStatus = { state: 'syncing' | 'success' | 'error'; connectionId: number; mode: SyncMode; message?: string };
 
 export function ConnectionsPage() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const queryClient = useQueryClient();
+
+  const confirmAndRunFullSync = (connectionId: number) => {
+    const confirmed = window.confirm(
+      'Full Sync can take longer because it reconciles historical transactions. Before starting, make sure all institutions are authenticated in SimpleFIN so no history is skipped. Continue?',
+    );
+    if (!confirmed) {
+      return;
+    }
+    syncMutation.mutate({ connectionId, mode: 'full' });
+  };
 
   const setupForm = useForm<SetupForm>({
     resolver: zodResolver(setupSchema),
@@ -47,24 +59,29 @@ export function ConnectionsPage() {
       setupForm.reset();
       queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      syncMutation.mutate(data.id);
+      syncMutation.mutate({ connectionId: data.id, mode: 'incremental' });
     },
   });
 
   const syncMutation = useMutation({
-    mutationFn: (id: number) => {
-      setSyncStatus({ state: 'syncing', connectionId: id });
-      return syncConnection(id);
+    mutationFn: (action: SyncAction) => {
+      setSyncStatus({ state: 'syncing', connectionId: action.connectionId, mode: action.mode });
+      return action.mode === 'full'
+        ? fullSyncConnection(action.connectionId)
+        : syncConnection(action.connectionId);
     },
-    onSuccess: (result, id) => {
-      setSyncStatus({ state: 'success', connectionId: id, message: result.message });
+    onSuccess: (result, action) => {
+      setSyncStatus({ state: 'success', connectionId: action.connectionId, mode: action.mode, message: result.message });
       queryClient.invalidateQueries({ queryKey: queryKeys.connections.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
     },
-    onError: (_err, id) => {
-      setSyncStatus({ state: 'error', connectionId: id, message: 'Sync failed. Please try again.' });
+    onError: (_err, action) => {
+      const message = action.mode === 'full'
+        ? 'Full sync failed. Ensure all institutions are authenticated, then try again.'
+        : 'Sync failed. Please try again.';
+      setSyncStatus({ state: 'error', connectionId: action.connectionId, mode: action.mode, message });
     },
   });
 
@@ -125,7 +142,10 @@ export function ConnectionsPage() {
       <Card title="Linked Institutions">
         {syncStatus?.state === 'syncing' && (
           <div className="sync-banner sync-banner--info">
-            <span className="spinner" /> Syncing transactions… This may take a moment.
+            <span className="spinner" />
+            {syncStatus.mode === 'full'
+              ? ' Running full sync… This can take longer while history is reconciled.'
+              : ' Syncing transactions… This may take a moment.'}
           </div>
         )}
         {syncStatus?.state === 'success' && (
@@ -140,6 +160,10 @@ export function ConnectionsPage() {
             <button className="sync-banner-dismiss" onClick={() => setSyncStatus(null)}>✕</button>
           </div>
         )}
+        <p className="subtle">
+          Full Sync fetches and reconciles historical transactions. Before running it, make sure all institutions are
+          authenticated in SimpleFIN so no history is skipped.
+        </p>
 
         {connectionsQuery.data && connectionsQuery.data.length > 0 ? (
           <table className="table">
@@ -155,13 +179,14 @@ export function ConnectionsPage() {
             <tbody>
               {connectionsQuery.data.map((connection) => {
                 const isSyncingThis = syncStatus?.state === 'syncing' && syncStatus.connectionId === connection.id;
+                const isFullSyncingThis = isSyncingThis && syncStatus?.mode === 'full';
                 return (
                 <tr key={connection.id}>
                   <td>{connection.institutionName ?? 'Unknown Institution'}</td>
                   <td>
                     {isSyncingThis ? (
                       <span className="sync-status-pill sync-status-pill--syncing">
-                        <span className="spinner" /> Syncing
+                        <span className="spinner" /> {isFullSyncingThis ? 'Full syncing' : 'Syncing'}
                       </span>
                     ) : (
                       <span className={`sync-status-pill sync-status-pill--${connection.syncStatus.toLowerCase()}`}>
@@ -177,10 +202,17 @@ export function ConnectionsPage() {
                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                       <Button
                         variant="secondary"
-                        onClick={() => syncMutation.mutate(connection.id)}
+                        onClick={() => syncMutation.mutate({ connectionId: connection.id, mode: 'incremental' })}
                         disabled={syncMutation.isPending}
                       >
-                        {isSyncingThis ? 'Syncing…' : 'Sync'}
+                        {isSyncingThis && !isFullSyncingThis ? 'Syncing…' : 'Sync'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => confirmAndRunFullSync(connection.id)}
+                        disabled={syncMutation.isPending}
+                      >
+                        {isFullSyncingThis ? 'Full syncing…' : 'Full Sync'}
                       </Button>
                       <Button
                         variant="danger"

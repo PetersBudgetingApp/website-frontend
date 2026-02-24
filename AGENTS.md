@@ -201,10 +201,12 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Mutations:
   - setup connection
   - sync connection
+  - full sync connection (`POST /connections/{id}/sync/full`) with explicit user confirmation
   - delete connection
+- Full sync UX warns users to ensure all institutions are authenticated in SimpleFIN before running.
 - Invalidation on setup:
   - `connections.all`, `accounts.all`
-- Invalidation on sync/delete:
+- Invalidation on sync/full sync/delete:
   - `connections.all`, `transactions.all`, `analytics.all`, `accounts.all`
 
 ### Transactions (`src/features/transactions/TransactionsPage.tsx`)

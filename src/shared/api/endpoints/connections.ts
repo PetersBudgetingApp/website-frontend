@@ -28,6 +28,13 @@ export async function syncConnection(id: number) {
   });
 }
 
+export async function fullSyncConnection(id: number) {
+  return apiClient.request(`connections/${id}/sync/full`, {
+    method: 'POST',
+    schema: syncResultSchema,
+  });
+}
+
 export async function deleteConnection(id: number) {
   return apiClient.request<void>(`connections/${id}`, {
     method: 'DELETE',
