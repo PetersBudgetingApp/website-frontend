@@ -139,7 +139,7 @@ export function ConnectionsPage() {
         )}
       </Card>
 
-      <Card title="Linked Institutions">
+      <Card title="SimpleFIN Connections">
         {syncStatus?.state === 'syncing' && (
           <div className="sync-banner sync-banner--info">
             <span className="spinner" />
@@ -169,7 +169,6 @@ export function ConnectionsPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Institution</th>
                 <th>Status</th>
                 <th>Accounts</th>
                 <th>Last Sync</th>
@@ -182,7 +181,6 @@ export function ConnectionsPage() {
                 const isFullSyncingThis = isSyncingThis && syncStatus?.mode === 'full';
                 return (
                 <tr key={connection.id}>
-                  <td>{connection.institutionName ?? 'Unknown Institution'}</td>
                   <td>
                     {isSyncingThis ? (
                       <span className="sync-status-pill sync-status-pill--syncing">
