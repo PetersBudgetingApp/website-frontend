@@ -3,7 +3,7 @@ export const appRoutes = {
   register: '/register',
   dashboard: '/dashboard',
   budgetInsightDetail: '/dashboard/budget-insights/:categoryId',
-  connections: '/connections',
+  accounts: '/accounts',
   transactions: '/transactions',
   categories: '/categories',
   budgets: '/budgets',
@@ -22,7 +22,7 @@ export interface NavigationRoute {
 
 export const navigationRoutes: readonly NavigationRoute[] = [
   { path: appRoutes.dashboard, label: 'Dashboard' },
-  { path: appRoutes.connections, label: 'Connections' },
+  { path: appRoutes.accounts, label: 'Accounts' },
   { path: appRoutes.transactions, label: 'Transactions' },
   { path: appRoutes.categories, label: 'Categories' },
   { path: appRoutes.budgets, label: 'Budgets' },

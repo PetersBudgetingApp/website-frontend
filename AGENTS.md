@@ -78,12 +78,13 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 ### Protected routes
 - `/dashboard` -> `DashboardPage`
 - `/dashboard/budget-insights/:categoryId` -> `BudgetInsightDetailPage` (detail view, not in nav)
-- `/connections` -> `ConnectionsPage`
+- `/accounts` -> `AccountsPage`
 - `/transactions` -> `TransactionsPage`
 - `/categories` -> `CategoriesPage`
 - `/budgets` -> `BudgetsPage`
 - `/recurring` -> `RecurringPage`
 - `/accounts/:id` -> `AccountDetailPage` (detail view, not in nav)
+- `/connections` -> redirects to `/accounts` (legacy alias)
 
 ### Guards
 - `RequireAuth` redirects non-authenticated users to `/login`.
@@ -126,7 +127,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - `src/features/auth/AuthPages.tsx`
   - `src/features/dashboard/DashboardPage.tsx`
   - `src/features/dashboard/BudgetInsightDetailPage.tsx`
-  - `src/features/connections/ConnectionsPage.tsx`
+  - `src/features/connections/ConnectionsPage.tsx` (`AccountsPage` with `Connections` + `Accounts` tabs)
   - `src/features/transactions/TransactionsPage.tsx`
   - `src/features/categories/CategoriesPage.tsx`
   - `src/features/budgets/BudgetsPage.tsx`
@@ -194,20 +195,28 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - Spending by Category rows are clickable and route to `/transactions` filtered by current month + selected category (or uncategorized when applicable).
 - Budget Progress card is clickable and routes to `/budgets`.
 
-### Connections (`src/features/connections/ConnectionsPage.tsx`)
+### Accounts (`src/features/connections/ConnectionsPage.tsx`)
 - Reads:
   - connections list
   - account summary
 - Mutations:
+  - create manual account (`POST /accounts`)
   - setup connection
   - sync connection
   - full sync connection (`POST /connections/{id}/sync/full`) with explicit user confirmation
   - delete connection
+- UX behavior:
+  - top-level toggle switches between `Connections` and `Accounts`.
+  - both tabs render `Account Snapshot` first.
+  - `Connections` tab keeps SimpleFIN setup + sync/remove actions.
+  - `Accounts` tab reuses net-worth grouping UI under title `Your Connected Accounts`, adds type/institution filters, and supports manual account creation modal.
 - Full sync UX warns users to ensure all institutions are authenticated in SimpleFIN before running.
 - Invalidation on setup:
   - `connections.all`, `accounts.all`
 - Invalidation on sync/full sync/delete:
   - `connections.all`, `transactions.all`, `analytics.all`, `accounts.all`
+- Invalidation on account create:
+  - `accounts.all`, `accounts.summary`, `analytics.all`
 
 ### Transactions (`src/features/transactions/TransactionsPage.tsx`)
 - Reads:

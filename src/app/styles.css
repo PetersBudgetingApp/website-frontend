@@ -930,6 +930,17 @@ textarea {
   gap: 1rem;
 }
 
+.net-worth-breakdown-controls {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.accounts-breakdown-filters {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .net-worth-breakdown-topline {
   display: grid;
   gap: 0.3rem;
@@ -1001,6 +1012,10 @@ textarea {
 .chart-toggle-btn {
   padding: 0.46rem 0.75rem;
   font-size: 0.84rem;
+}
+
+.accounts-create-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .chart-content {
@@ -1583,6 +1598,10 @@ textarea {
 
   .chart-toggle-btn {
     flex: 1 1 0;
+  }
+
+  .accounts-breakdown-filters {
+    grid-template-columns: 1fr;
   }
 
   .trend-chart {

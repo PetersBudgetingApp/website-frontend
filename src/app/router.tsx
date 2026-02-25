@@ -5,7 +5,7 @@ import { appRoutes, defaultAuthenticatedRoute } from '@app/routes';
 import { LoginPage, RegisterPage } from '@features/auth/AuthPages';
 import { DashboardPage } from '@features/dashboard/DashboardPage';
 import { BudgetInsightDetailPage } from '@features/dashboard/BudgetInsightDetailPage';
-import { ConnectionsPage } from '@features/connections/ConnectionsPage';
+import { AccountsPage } from '@features/connections/ConnectionsPage';
 import { TransactionsPage } from '@features/transactions/TransactionsPage';
 import { CategoriesPage } from '@features/categories/CategoriesPage';
 import { BudgetsPage } from '@features/budgets/BudgetsPage';
@@ -30,7 +30,8 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to={defaultAuthenticatedRoute} replace /> },
           { path: appRoutes.dashboard, element: <DashboardPage /> },
           { path: appRoutes.budgetInsightDetail, element: <BudgetInsightDetailPage /> },
-          { path: appRoutes.connections, element: <ConnectionsPage /> },
+          { path: appRoutes.accounts, element: <AccountsPage /> },
+          { path: '/connections', element: <Navigate to={appRoutes.accounts} replace /> },
           { path: appRoutes.transactions, element: <TransactionsPage /> },
           { path: appRoutes.categories, element: <CategoriesPage /> },
           { path: appRoutes.budgets, element: <BudgetsPage /> },

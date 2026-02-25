@@ -7,6 +7,13 @@ const accountsSchema = z.array(accountSchema);
 
 export type AccountDto = z.infer<typeof accountSchema>;
 export type AccountSummaryDto = z.infer<typeof accountSummarySchema>;
+export interface AccountCreateRequestDto {
+  name: string;
+  institutionName?: string;
+  netWorthCategory: NetWorthCategory;
+  currentBalance: number;
+  currency?: string;
+}
 
 export async function getAccounts() {
   return apiClient.request('accounts', {
@@ -23,6 +30,14 @@ export async function getAccount(id: number) {
 export async function getAccountSummary() {
   return apiClient.request('accounts/summary', {
     schema: accountSummarySchema,
+  });
+}
+
+export async function createAccount(payload: AccountCreateRequestDto) {
+  return apiClient.request('accounts', {
+    method: 'POST',
+    body: payload,
+    schema: accountSchema,
   });
 }
 

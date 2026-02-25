@@ -680,7 +680,7 @@ export function TransactionsPage() {
             </div>
           </>
         ) : (
-          <EmptyState title="No transactions" description="Adjust filters or run a sync in Connections." />
+          <EmptyState title="No transactions" description="Adjust filters or run a sync in Accounts > Connections." />
         )}
       </Card>
 

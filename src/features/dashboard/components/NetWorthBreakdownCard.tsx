@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@domain/format';
 import type { AccountSummaryDto } from '@shared/api/endpoints/accounts';
@@ -6,6 +6,9 @@ import { Card } from '@shared/ui/Card';
 
 interface NetWorthBreakdownCardProps {
   summary: AccountSummaryDto;
+  title?: string;
+  actions?: ReactNode;
+  controls?: ReactNode;
 }
 
 type BreakdownType = 'bank' | 'investment' | 'liability';
@@ -67,7 +70,12 @@ function groupByInstitution(accounts: BreakdownItem[]): InstitutionGroup[] {
     .sort((a, b) => b.total - a.total || a.institutionName.localeCompare(b.institutionName));
 }
 
-export function NetWorthBreakdownCard({ summary }: NetWorthBreakdownCardProps) {
+export function NetWorthBreakdownCard({
+  summary,
+  title = 'Net Worth Breakdown',
+  actions,
+  controls,
+}: NetWorthBreakdownCardProps) {
   const breakdown = useMemo(() => {
     const bankAccounts: BreakdownItem[] = [];
     const investments: BreakdownItem[] = [];
@@ -131,7 +139,8 @@ export function NetWorthBreakdownCard({ summary }: NetWorthBreakdownCardProps) {
   }, [summary.accounts]);
 
   return (
-    <Card title="Net Worth Breakdown" className="net-worth-breakdown-card">
+    <Card title={title} actions={actions} className="net-worth-breakdown-card">
+      {controls && <div className="net-worth-breakdown-controls">{controls}</div>}
       <div className="net-worth-breakdown-topline">
         <p className="subtle">Net Worth</p>
         <p className="number net-worth-breakdown-value">{formatCurrency(summary.netWorth)}</p>
