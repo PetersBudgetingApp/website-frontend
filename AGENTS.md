@@ -141,6 +141,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 - `queryKeys.accounts.all()` -> `['accounts']`
 - `queryKeys.accounts.detail(id)` -> `['accounts', id]`
 - `queryKeys.accounts.summary()` -> `['accounts', 'summary']`
+- `queryKeys.accounts.deletionPreview(id)` -> `['accounts', id, 'deletion-preview']`
 - `queryKeys.connections.all()` -> `['connections']`
 - `queryKeys.transactions.all()` -> `['transactions']`
 - `queryKeys.transactions.list(filters)` -> `['transactions', filters]`
@@ -178,9 +179,9 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - budget alignment insights by current month (`/analytics/budget-insights`)
   - flat categories
 - Net worth card behavior:
-  - shows three account sections: `Bank Accounts`, `Investments`, `Liabilities`
-  - groups rows by institution within each section
-  - section placement is driven by account `netWorthCategory` from backend
+  - shows summary-only metrics: `Net Worth`, `Assets`, and `Liabilities`
+  - entire card is clickable and routes to `/accounts` with Accounts tab preselected
+  - when opened via this route, Accounts page shows a top-left `Back to Dashboard` link
 - Query keys:
   - `accounts.summary`
   - `analytics.cashFlow(startDate,endDate)`
@@ -210,6 +211,7 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
   - both tabs render `Account Snapshot` first.
   - `Connections` tab keeps SimpleFIN setup + sync/remove actions.
   - `Accounts` tab reuses net-worth grouping UI under title `Your Connected Accounts`, adds type/institution filters, and supports manual account creation modal.
+  - if navigated from Dashboard net-worth card, page shows top-left `Back to Dashboard`.
 - Full sync UX warns users to ensure all institutions are authenticated in SimpleFIN before running.
 - Invalidation on setup:
   - `connections.all`, `accounts.all`
@@ -322,13 +324,23 @@ A new agent should be able to understand runtime behavior, API usage, cache inva
 ### Account Detail (`src/features/accounts/AccountDetailPage.tsx`)
 - Reads:
   - account detail by id
+  - account deletion preview (`GET /accounts/{id}/deletion-preview`)
   - transactions filtered by account id
 - Mutations:
   - update account net worth category (`PATCH /accounts/{id}/net-worth-category`)
+  - delete manual account (`DELETE /accounts/{id}`) after typed confirmation
 - Invalidation/update behavior on save:
   - updates `accounts.detail(id)` cache directly
   - invalidates `accounts.summary` and `accounts.all`
-- Navigated to from Dashboard net worth breakdown account links
+- Invalidation on account delete:
+  - `accounts.all`, `accounts.summary`, `transactions.all`, `transactions.coverage`, `analytics.all`
+- Navigation behavior:
+  - if opened from Accounts page, back link shows `Back to Accounts` and restores the Accounts tab
+  - if opened directly, back link defaults to `Back to Dashboard`
+- Delete UX behavior:
+  - delete controls render only for manual accounts (`canDelete=true` from deletion-preview)
+  - clicking delete first shows an alert with associated transaction count
+  - user must type exact phrase `Delete this account` before confirm button is enabled
 
 ## API Layer Contract Rules
 1. Every endpoint function should validate payload with Zod schema when response JSON has shape constraints.

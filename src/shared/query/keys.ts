@@ -5,6 +5,7 @@ export const queryKeys = {
     all: () => ['accounts'] as const,
     detail: (id: number) => ['accounts', id] as const,
     summary: () => ['accounts', 'summary'] as const,
+    deletionPreview: (id: number) => ['accounts', id, 'deletion-preview'] as const,
   },
   connections: {
     all: () => ['connections'] as const,

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useLocation } from 'react-router-dom';
+import { appRoutes } from '@app/routes';
 import {
   createAccount,
   getAccountSummary,
@@ -37,6 +39,10 @@ type AccountTypeFilter = 'ANY' | NetWorthCategory;
 type SyncMode = 'incremental' | 'full';
 type SyncAction = { connectionId: number; mode: SyncMode };
 type SyncStatus = { state: 'syncing' | 'success' | 'error'; connectionId: number; mode: SyncMode; message?: string };
+interface AccountsPageLocationState {
+  from?: string;
+  tab?: AccountsTab;
+}
 
 interface AccountFormState {
   name: string;
@@ -107,7 +113,9 @@ function toFilteredSummary(summary: AccountSummaryDto, typeFilter: AccountTypeFi
 }
 
 export function AccountsPage() {
-  const [activeTab, setActiveTab] = useState<AccountsTab>('connections');
+  const location = useLocation();
+  const locationState = (location.state as AccountsPageLocationState | null) ?? null;
+  const [activeTab, setActiveTab] = useState<AccountsTab>(locationState?.tab === 'accounts' ? 'accounts' : 'connections');
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountTypeFilter>('ANY');
   const [institutionFilter, setInstitutionFilter] = useState('ANY');
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
@@ -115,6 +123,7 @@ export function AccountsPage() {
   const [accountForm, setAccountForm] = useState<AccountFormState>(getDefaultAccountForm);
   const [accountFormError, setAccountFormError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const showBackToDashboard = locationState?.from === appRoutes.dashboard;
 
   const setupForm = useForm<SetupForm>({
     resolver: zodResolver(setupSchema),
@@ -224,6 +233,13 @@ export function AccountsPage() {
   }, [institutionFilter, institutionOptions]);
 
   useEffect(() => {
+    if (!locationState?.tab) {
+      return;
+    }
+    setActiveTab(locationState.tab);
+  }, [locationState?.tab]);
+
+  useEffect(() => {
     if (!accountFormOpen) {
       return;
     }
@@ -301,6 +317,11 @@ export function AccountsPage() {
 
   return (
     <section className="page">
+      {showBackToDashboard && (
+        <p style={{ marginBottom: '0.5rem' }}>
+          <Link to={appRoutes.dashboard}>&larr; Back to Dashboard</Link>
+        </p>
+      )}
       <h2>Accounts</h2>
 
       <div className="chart-toggle" role="group" aria-label="Accounts view">
@@ -497,6 +518,11 @@ export function AccountsPage() {
                   </Select>
                 </div>
               }
+              accountLinkState={{
+                from: appRoutes.accounts,
+                tab: 'accounts',
+                returnToDashboard: showBackToDashboard,
+              }}
             />
           ) : (
             <Card

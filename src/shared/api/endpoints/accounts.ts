@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import type { NetWorthCategory } from '@domain/types';
-import { accountSchema, accountSummarySchema } from '@domain/schemas';
+import { accountDeletionPreviewSchema, accountSchema, accountSummarySchema } from '@domain/schemas';
 import { apiClient } from '@shared/api/client';
 
 const accountsSchema = z.array(accountSchema);
 
 export type AccountDto = z.infer<typeof accountSchema>;
 export type AccountSummaryDto = z.infer<typeof accountSummarySchema>;
+export type AccountDeletionPreviewDto = z.infer<typeof accountDeletionPreviewSchema>;
 export interface AccountCreateRequestDto {
   name: string;
   institutionName?: string;
@@ -38,6 +39,18 @@ export async function createAccount(payload: AccountCreateRequestDto) {
     method: 'POST',
     body: payload,
     schema: accountSchema,
+  });
+}
+
+export async function getAccountDeletionPreview(id: number) {
+  return apiClient.request(`accounts/${id}/deletion-preview`, {
+    schema: accountDeletionPreviewSchema,
+  });
+}
+
+export async function deleteAccount(id: number) {
+  return apiClient.request<void>(`accounts/${id}`, {
+    method: 'DELETE',
   });
 }
 

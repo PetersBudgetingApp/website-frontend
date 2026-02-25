@@ -9,6 +9,7 @@ interface NetWorthBreakdownCardProps {
   title?: string;
   actions?: ReactNode;
   controls?: ReactNode;
+  accountLinkState?: unknown;
 }
 
 type BreakdownType = 'bank' | 'investment' | 'liability';
@@ -75,6 +76,7 @@ export function NetWorthBreakdownCard({
   title = 'Net Worth Breakdown',
   actions,
   controls,
+  accountLinkState,
 }: NetWorthBreakdownCardProps) {
   const breakdown = useMemo(() => {
     const bankAccounts: BreakdownItem[] = [];
@@ -167,7 +169,7 @@ export function NetWorthBreakdownCard({
                       <tbody>
                         {group.accounts.map((item) => (
                           <tr key={`${section.key}-${item.id}`}>
-                            <td><Link to={`/accounts/${item.id}`}>{item.name}</Link></td>
+                            <td><Link to={`/accounts/${item.id}`} state={accountLinkState}>{item.name}</Link></td>
                             <td className="number">{formatCurrency(item.amount)}</td>
                           </tr>
                         ))}

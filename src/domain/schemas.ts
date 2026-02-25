@@ -53,6 +53,11 @@ export const accountSummarySchema = z.object({
   accounts: z.array(accountSchema),
 });
 
+export const accountDeletionPreviewSchema = z.object({
+  transactionCount: z.number(),
+  canDelete: z.boolean(),
+});
+
 export const categorySchema: z.ZodType<CategoryNode> = z.lazy(() =>
   z.object({
     id: z.number(),

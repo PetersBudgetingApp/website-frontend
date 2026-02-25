@@ -1,20 +1,28 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@shared/query/keys';
-import { getAccount, updateAccountNetWorthCategory } from '@shared/api/endpoints/accounts';
+import { appRoutes } from '@app/routes';
+import type { NetWorthCategory, TransactionFilters } from '@domain/types';
+import {
+  deleteAccount,
+  getAccount,
+  getAccountDeletionPreview,
+  updateAccountNetWorthCategory,
+} from '@shared/api/endpoints/accounts';
 import { getTransactions } from '@shared/api/endpoints/transactions';
-import { Card } from '@shared/ui/Card';
+import { ApiClientError } from '@shared/api/httpClient';
+import { queryKeys } from '@shared/query/keys';
 import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
+import { Card } from '@shared/ui/Card';
 import { EmptyState } from '@shared/ui/EmptyState';
+import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { Spinner } from '@shared/ui/Spinner';
 import { formatCurrency, formatDate } from '@domain/format';
-import type { NetWorthCategory, TransactionFilters } from '@domain/types';
-import { appRoutes } from '@app/routes';
 
 const PAGE_SIZE = 20;
+const DELETE_CONFIRMATION_TEXT = 'Delete this account';
 
 const NET_WORTH_CATEGORY_LABELS: Record<NetWorthCategory, string> = {
   BANK_ACCOUNT: 'Bank Accounts',
@@ -22,18 +30,36 @@ const NET_WORTH_CATEGORY_LABELS: Record<NetWorthCategory, string> = {
   LIABILITY: 'Liabilities',
 };
 
+interface AccountDetailLocationState {
+  from?: string;
+  tab?: 'connections' | 'accounts';
+  returnToDashboard?: boolean;
+}
+
 export function AccountDetailPage() {
   const { id } = useParams<{ id: string }>();
   const accountId = Number(id);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = (location.state as AccountDetailLocationState | null) ?? null;
   const queryClient = useQueryClient();
 
   const [offset, setOffset] = useState(0);
   const [selectedNetWorthCategory, setSelectedNetWorthCategory] = useState<NetWorthCategory | ''>('');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [deleteModeEnabled, setDeleteModeEnabled] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const accountQuery = useQuery({
     queryKey: queryKeys.accounts.detail(accountId),
     queryFn: () => getAccount(accountId),
+    enabled: !Number.isNaN(accountId),
+  });
+
+  const deletionPreviewQuery = useQuery({
+    queryKey: queryKeys.accounts.deletionPreview(accountId),
+    queryFn: () => getAccountDeletionPreview(accountId),
     enabled: !Number.isNaN(accountId),
   });
 
@@ -70,6 +96,36 @@ export function AccountDetailPage() {
     },
   });
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => deleteAccount(accountId),
+    onSuccess: () => {
+      const nextState = {
+        tab: 'accounts' as const,
+        ...(locationState?.returnToDashboard ? { from: appRoutes.dashboard } : {}),
+      };
+
+      navigate(appRoutes.accounts, {
+        replace: true,
+        state: nextState,
+      });
+
+      queryClient.removeQueries({ queryKey: queryKeys.accounts.detail(accountId) });
+      queryClient.removeQueries({ queryKey: queryKeys.accounts.deletionPreview(accountId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.summary() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.coverage() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+    },
+    onError: (error) => {
+      if (error instanceof ApiClientError) {
+        setDeleteError(error.message);
+        return;
+      }
+      setDeleteError('Unable to delete account. Please try again.');
+    },
+  });
+
   if (Number.isNaN(accountId)) {
     return (
       <section className="page">
@@ -100,11 +156,21 @@ export function AccountDetailPage() {
   const account = accountQuery.data;
   const activeNetWorthCategory = selectedNetWorthCategory === '' ? account.netWorthCategory : selectedNetWorthCategory;
   const canSaveCategory = activeNetWorthCategory !== account.netWorthCategory;
+  const cameFromAccounts = locationState?.from === appRoutes.accounts;
+  const backTarget = cameFromAccounts ? appRoutes.accounts : appRoutes.dashboard;
+  const backState = cameFromAccounts
+    ? {
+      tab: locationState?.tab === 'connections' ? 'connections' : 'accounts',
+      ...(locationState?.returnToDashboard ? { from: appRoutes.dashboard } : {}),
+    }
+    : undefined;
+  const backLabel = cameFromAccounts ? 'Back to Accounts' : 'Back to Dashboard';
+  const deletionPreview = deletionPreviewQuery.data;
 
   return (
     <section className="page">
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to={appRoutes.dashboard}>&larr; Back to Dashboard</Link>
+        <Link to={backTarget} state={backState}>&larr; {backLabel}</Link>
       </p>
       <h2>{account.name}</h2>
 
@@ -221,6 +287,64 @@ export function AccountDetailPage() {
           </>
         )}
       </Card>
+
+      {deletionPreview?.canDelete && (
+        <Card title="Delete Account">
+          <p className="subtle" style={{ marginBottom: '0.8rem' }}>
+            Deleting this account will also delete {deletionPreview.transactionCount} associated {deletionPreview.transactionCount === 1 ? 'transaction' : 'transactions'}.
+          </p>
+
+          {!deleteModeEnabled ? (
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => {
+                  setDeleteModeEnabled(true);
+                  setDeleteInput('');
+                  setDeleteError(null);
+                }}
+              >
+              Delete account
+            </Button>
+          ) : (
+            <div className="form-grid" style={{ maxWidth: '480px' }}>
+              <Input
+                id="delete-account-confirmation"
+                label="Type confirmation"
+                placeholder={DELETE_CONFIRMATION_TEXT}
+                value={deleteInput}
+                onChange={(event) => setDeleteInput(event.target.value)}
+                disabled={deleteAccountMutation.isPending}
+              />
+
+              {deleteError && <p className="field-error">{deleteError}</p>}
+
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={deleteInput !== DELETE_CONFIRMATION_TEXT || deleteAccountMutation.isPending}
+                  onClick={() => deleteAccountMutation.mutate()}
+                >
+                  {deleteAccountMutation.isPending ? 'Deleting...' : 'Confirm delete'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={deleteAccountMutation.isPending}
+                  onClick={() => {
+                    setDeleteModeEnabled(false);
+                    setDeleteInput('');
+                    setDeleteError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
     </section>
   );
 }

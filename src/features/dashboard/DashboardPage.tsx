@@ -16,7 +16,6 @@ import { monthToDateRange } from '@shared/utils/date';
 import { getBudgetPerformance } from '@features/budgets/budgetStore';
 import { BudgetInsightsPanel } from '@features/dashboard/components/BudgetInsightsPanel';
 import { IncomeVsSpendingChart } from '@features/dashboard/components/IncomeVsSpendingChart';
-import { NetWorthBreakdownCard } from '@features/dashboard/components/NetWorthBreakdownCard';
 import { SummaryCards } from '@features/dashboard/components/SummaryCards';
 import { buildTransactionsPath } from '@features/transactions/transactionRouteFilters';
 
@@ -172,7 +171,25 @@ export function DashboardPage() {
         isError={trendsQuery.isError}
         onMonthSelect={(selectedMonth) => navigate(buildTransactionsPath({ month: selectedMonth }))}
       />
-      <NetWorthBreakdownCard summary={accountSummaryQuery.data} />
+      <Card
+        title="Net Worth Breakdown"
+        onClick={() => navigate(appRoutes.accounts, { state: { from: appRoutes.dashboard, tab: 'accounts' } })}
+      >
+        <div className="grid-cards">
+          <div>
+            <p className="subtle">Net Worth</p>
+            <p className="number">{formatCurrency(accountSummaryQuery.data.netWorth)}</p>
+          </div>
+          <div>
+            <p className="subtle">Assets</p>
+            <p className="number">{formatCurrency(accountSummaryQuery.data.totalAssets)}</p>
+          </div>
+          <div>
+            <p className="subtle">Liabilities</p>
+            <p className="number">{formatCurrency(accountSummaryQuery.data.totalLiabilities)}</p>
+          </div>
+        </div>
+      </Card>
       <SummaryCards
         income={cashFlowQuery.data.totalIncome}
         expenses={cashFlowQuery.data.totalExpenses}
